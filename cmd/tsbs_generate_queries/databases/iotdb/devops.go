@@ -40,8 +40,9 @@ func (d *Devops) modifyHostnames(hostnames []string) []string {
 
 // getHostFromWithHostnames creates FROM SQL statement for multiple hostnames.
 // e.g.  A storage group "root.cpu" has two devices.
-//       Two hostnames are "host1" and "host2"
-//       This function returns "root.cpu.host1, root.cpu.host2" (without "FROM")
+//
+//	Two hostnames are "host1" and "host2"
+//	This function returns "root.cpu.host1, root.cpu.host2" (without "FROM")
 func (d *Devops) getHostFromWithHostnames(hostnames []string) string {
 	hostnames = d.modifyHostnames(hostnames)
 	var hostnameClauses []string
@@ -53,8 +54,9 @@ func (d *Devops) getHostFromWithHostnames(hostnames []string) string {
 
 // getHostFromString gets multiple random hostnames and creates a FROM SQL statement for these hostnames.
 // e.g.  A storage group "root.cpu" has two devices, named "host1" and "host2"
-//       Two paths for them are "root.cpu.host1" and "root.cpu.host2"
-//       This function returns "root.cpu.host1, root.cpu.host2" (without "FROM")
+//
+//	Two paths for them are "root.cpu.host1" and "root.cpu.host2"
+//	This function returns "root.cpu.host1, root.cpu.host2" (without "FROM")
 func (d *Devops) getHostFromString(nHosts int) string {
 	hostnames, err := d.GetRandomHosts(nHosts)
 	panicIfErr(err)
@@ -99,7 +101,7 @@ func (d *Devops) GroupByTime(qi query.Query, nHosts, numMetrics int, timeRange t
 	sql := ""
 	sql = sql + fmt.Sprintf("SELECT %s", selectClause)
 	sql = sql + fmt.Sprintf(" FROM %s", fromHosts)
-	sql = sql + fmt.Sprintf(" GROUP BY ([%s, %s), 1m), LEVEL = %d", interval.Start().Format(iotdbTimeFmt), interval.End().Format(iotdbTimeFmt), d.BasicPathLevel+1)
+	sql = sql + fmt.Sprintf(" GROUP BY ([%s, %s), 1m)", interval.Start().Format(iotdbTimeFmt), interval.End().Format(iotdbTimeFmt))
 
 	d.fillInQuery(qi, humanLabel, humanDesc, sql)
 }
