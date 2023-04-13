@@ -89,7 +89,7 @@ func (d *Devops) getSelectClausesAggMetricsString(agg string, metrics []string) 
 // WHERE (hostname = '$HOSTNAME_1' OR ... OR hostname = '$HOSTNAME_N')
 // AND time >= '$HOUR_START' AND time < '$HOUR_END'
 // GROUP BY minute ORDER BY minute ASC
-func (d *Devops) GroupByTime(qi query.Query, nHosts, numMetrics int, timeRange time.Duration) {
+func (d *Devops) GroupByTimeOld(qi query.Query, nHosts, numMetrics int, timeRange time.Duration) {
 	interval := d.Interval.MustRandWindow(timeRange)
 	metrics, err := devops.GetCPUMetricsSlice(numMetrics)
 	panicIfErr(err)
@@ -103,7 +103,21 @@ func (d *Devops) GroupByTime(qi query.Query, nHosts, numMetrics int, timeRange t
 	sql = sql + fmt.Sprintf(" FROM %s", fromHosts)
 	sql = sql + fmt.Sprintf(" GROUP BY ([%s, %s), 1m)", interval.Start().Format(iotdbTimeFmt), interval.End().Format(iotdbTimeFmt))
 
-	d.fillInQuery(qi, humanLabel, humanDesc, sql)
+	//FIXME error
+	d.fillInQuery(qi, humanLabel, humanDesc, sql, 0, 0)
+}
+
+func (d *Devops) GroupByTime(qi query.Query, nHosts, numMetrics int, timeRange time.Duration) {
+	interval := d.Interval.MustRandWindow(timeRange)
+	metrics, err := devops.GetCPUMetricsSlice(numMetrics)
+	panicIfErr(err)
+	fromHosts := d.getHostFromString(nHosts)
+	path := fmt.Sprintf("%s.%s", fromHosts, metrics[0])
+
+	humanLabel := fmt.Sprintf("IoTDB %d cpu metric(s), random %4d hosts, random %s by 1m", numMetrics, nHosts, timeRange)
+	humanDesc := fmt.Sprintf("%s: %s", humanLabel, interval.StartString())
+
+	d.fillInQuery(qi, humanLabel, humanDesc, path, interval.Start().UnixMilli(), interval.End().UnixMilli())
 }
 
 // GroupByTimeAndPrimaryTag selects the AVG of numMetrics metrics under 'cpu' per device per hour for a day,
@@ -126,7 +140,8 @@ func (d *Devops) GroupByTimeAndPrimaryTag(qi query.Query, numMetrics int) {
 	sql = sql + fmt.Sprintf(" FROM %s.cpu.*", d.BasicPath)
 	sql = sql + fmt.Sprintf(" GROUP BY ([%s, %s), 1h)", interval.Start().Format(iotdbTimeFmt), interval.End().Format(iotdbTimeFmt))
 
-	d.fillInQuery(qi, humanLabel, humanDesc, sql)
+	//FIXME error
+	d.fillInQuery(qi, humanLabel, humanDesc, sql, 0, 0)
 }
 
 // LastPointPerHost finds the last row for every host in the dataset
@@ -135,7 +150,9 @@ func (d *Devops) LastPointPerHost(qi query.Query) {
 	humanDesc := humanLabel + ": cpu"
 
 	sql := fmt.Sprintf("SELECT LAST * FROM %s.cpu.*", d.BasicPath)
-	d.fillInQuery(qi, humanLabel, humanDesc, sql)
+
+	//FIXME error
+	d.fillInQuery(qi, humanLabel, humanDesc, sql, 0, 0)
 }
 
 // MaxAllCPU selects the MAX of all metrics under 'cpu' per hour for nhosts hosts,
@@ -157,7 +174,8 @@ func (d *Devops) MaxAllCPU(qi query.Query, nHosts int, duration time.Duration) {
 	sql = sql + fmt.Sprintf(" FROM %s", fromHosts)
 	sql = sql + fmt.Sprintf(" GROUP BY ([%s, %s), 1h), LEVEL=%d", interval.Start().Format(iotdbTimeFmt), interval.End().Format(iotdbTimeFmt), d.BasicPathLevel+1)
 
-	d.fillInQuery(qi, humanLabel, humanDesc, sql)
+	//FIXME error
+	d.fillInQuery(qi, humanLabel, humanDesc, sql, 0, 0)
 }
 
 // GroupByOrderByLimit benchmarks a query that has a time WHERE clause, that groups by a truncated date, orders by that date, and takes a limit:
@@ -184,7 +202,8 @@ func (d *Devops) GroupByOrderByLimit(qi query.Query) {
 	humanLabel := "IoTDB max cpu over last 5 min-intervals (random end)"
 	humanDesc := fmt.Sprintf("%s: %s", humanLabel, interval.StartString())
 
-	d.fillInQuery(qi, humanLabel, humanDesc, sql)
+	//FIXME error
+	d.fillInQuery(qi, humanLabel, humanDesc, sql, 0, 0)
 }
 
 // HighCPUForHosts populates a query that gets CPU metrics when the CPU has high
@@ -213,5 +232,6 @@ func (d *Devops) HighCPUForHosts(qi query.Query, nHosts int) {
 	sql = sql + fmt.Sprintf(" FROM %s", fromHosts)
 	sql = sql + fmt.Sprintf(" WHERE usage_user > 90 AND time >= %s AND time < %s ALIGN BY DEVICE", interval.Start().Format(iotdbTimeFmt), interval.End().Format(iotdbTimeFmt))
 
-	d.fillInQuery(qi, humanLabel, humanDesc, sql)
+	//FIXME error
+	d.fillInQuery(qi, humanLabel, humanDesc, sql, 0, 0)
 }

@@ -22,11 +22,14 @@ func (g *BaseGenerator) GenerateEmptyQuery() query.Query {
 }
 
 // fillInQuery fills the query struct with data.
-func (g *BaseGenerator) fillInQuery(qi query.Query, humanLabel, humanDesc, sql string) {
+func (g *BaseGenerator) fillInQuery(qi query.Query, humanLabel, humanDesc, path string, startTime int64, endTime int64) {
 	q := qi.(*query.IoTDB)
 	q.HumanLabel = []byte(humanLabel)
 	q.HumanDescription = []byte(humanDesc)
-	q.SqlQuery = []byte(sql)
+
+	q.Path = []byte(path)
+	q.StartTime = startTime
+	q.EndTime = endTime
 }
 
 // NewDevops creates a new devops use case query generator.

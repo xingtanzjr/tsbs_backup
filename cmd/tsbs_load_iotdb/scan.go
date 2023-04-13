@@ -55,7 +55,7 @@ func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, 
 		return interface{}(float64(value)), err
 	case client.TEXT:
 		return interface{}(str), nil
-	case client.UNKNOW:
+	case client.UNKNOWN:
 		return interface{}(nil), fmt.Errorf("datatype client.UNKNOW, value:%s", str)
 	default:
 		return interface{}(nil), fmt.Errorf("unknown datatype, value:%s", str)

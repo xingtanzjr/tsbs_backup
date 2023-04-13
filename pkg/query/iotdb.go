@@ -11,8 +11,10 @@ type IoTDB struct {
 	HumanLabel       []byte
 	HumanDescription []byte
 
-	SqlQuery []byte
-	id       uint64
+	Path      []byte
+	StartTime int64
+	EndTime   int64
+	id        uint64
 }
 
 // IoTDBPool is a sync.Pool of IoTDB Query types
@@ -22,7 +24,7 @@ var IoTDBPool = sync.Pool{
 			HumanLabel:       []byte{},
 			HumanDescription: []byte{},
 
-			SqlQuery: []byte{},
+			Path: []byte{},
 		}
 	},
 }
@@ -45,8 +47,8 @@ func (q *IoTDB) SetID(id uint64) {
 // String produces a debug-ready description of a Query.
 func (q *IoTDB) String() string {
 	return fmt.Sprintf(
-		"HumanLabel: %s, HumanDescription: %s, Query: %s",
-		q.HumanLabel, q.HumanDescription, q.SqlQuery,
+		"HumanLabel: %s, HumanDescription: %s, Path: %s, StartTime: %d, EndTime: %d",
+		q.HumanLabel, q.HumanDescription, q.Path, q.StartTime, q.EndTime,
 	)
 }
 
@@ -65,7 +67,8 @@ func (q *IoTDB) Release() {
 	q.HumanLabel = q.HumanLabel[:0]
 	q.HumanDescription = q.HumanDescription[:0]
 	q.id = 0
-	q.SqlQuery = q.SqlQuery[:0]
+
+	q.Path = q.Path[:0]
 
 	IoTDBPool.Put(q)
 }

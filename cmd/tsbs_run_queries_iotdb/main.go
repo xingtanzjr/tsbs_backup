@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"log"
 	"time"
 
@@ -91,12 +92,19 @@ func (p *processor) Init(workerNumber int) {
 
 func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	iotdbQ := q.(*query.IoTDB)
-	sql := string(iotdbQ.SqlQuery)
+
+	// sql := fmt.Sprintf("SELECT MAX_VALUE(%s) FROM %s GROUP BY ([%s, %s), 1m)", iotdbQ.Path, iotdbQ.StartTime, iotdbQ.EndTime)
+	// sql := string(iotdbQ.SqlQuery)
 
 	start := time.Now().UnixNano()
-	dataSet, err := p.session.ExecuteQueryStatement(sql, &timeoutInMs) // 0 for no timeout
+	// dataSet, err := p.session.ExecuteQueryStatement(sql, &timeoutInMs) // 0 for no timeout
+	var interval int64 = 60000
+	dataSet, err := p.session.ExecuteAggregationQuery([]string{string(iotdbQ.Path)},
+		[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
+		&iotdbQ.StartTime, &iotdbQ.EndTime, &interval, &timeoutInMs)
 	if err == nil {
 		if p.printResponses {
+			sql := fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)", iotdbQ.Path, iotdbQ.StartTime, iotdbQ.EndTime, interval)
 			printDataSet(sql, dataSet)
 		} else {
 			// var next bool
@@ -109,6 +117,7 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 
 	defer dataSet.Close()
 	if err != nil {
+		sql := fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)", iotdbQ.Path, iotdbQ.StartTime, iotdbQ.EndTime, interval)
 		log.Printf("An error occurred while executing query SQL: %s\n", sql)
 		return nil, err
 	}

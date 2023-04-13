@@ -93,10 +93,10 @@ func getStringOfDatatype(datatype client.TSDataType) string {
 		return "INT64"
 	case client.TEXT:
 		return "TEXT"
-	case client.UNKNOW:
-		return "UNKNOW"
+	case client.UNKNOWN:
+		return "UNKNOWN"
 	default:
-		return "UNKNOW"
+		return "UNKNOWN"
 	}
 }
 

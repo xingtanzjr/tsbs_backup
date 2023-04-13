@@ -35,7 +35,6 @@ const defaultBufSize = 4096
 // root.cpu.host_1,1451606400000000000,'host_1',44.0
 // datatype,5,2
 // tags,region='eu-west-1',datacenter='eu-west-1c',rack='87'
-//
 func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 	// Tag row first, prefixed with 'time,path'
 	buf1 := make([]byte, 0, defaultBufSize)
@@ -160,7 +159,7 @@ func IotdbFormat(v interface{}) ([]byte, client.TSDataType) {
 	case string:
 		return []byte(v.(string)), client.TEXT
 	case nil:
-		return []byte(v.(string)), client.UNKNOW
+		return []byte(v.(string)), client.UNKNOWN
 	default:
 		panic(fmt.Sprintf("unknown field type for %#v", v))
 	}
