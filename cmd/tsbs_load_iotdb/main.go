@@ -104,6 +104,5 @@ func init() {
 
 func main() {
 	benchmark := newBenchmark(clientConfig, loaderConfig)
-
 	loader.RunBenchmark(benchmark)
 }

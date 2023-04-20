@@ -37,7 +37,7 @@ func (p *iotdbPoint) generateTagsAttributesSQL() string {
 
 // parse datatype and convert string into interface
 func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, error) {
-	switch client.TSDataType(datatype) {
+	switch datatype {
 	case client.BOOLEAN:
 		value, err := strconv.ParseBool(str)
 		return interface{}(value), err

@@ -16,18 +16,26 @@ type BaseGenerator struct {
 	BasicPathLevel int32  // e.g. 0 for "root", 1 for "root.device"
 }
 
-// GenerateEmptyQuery returns an empty query.Mongo.
+// GenerateEmptyQuery returns an empty query.IoTDB.
 func (g *BaseGenerator) GenerateEmptyQuery() query.Query {
 	return query.NewIoTDB()
 }
 
 // fillInQuery fills the query struct with data.
-func (g *BaseGenerator) fillInQuery(qi query.Query, humanLabel, humanDesc, path string, startTime int64, endTime int64) {
+func (g *BaseGenerator) fillInQuery(qi query.Query, humanLabel, humanDesc, sql string) {
+	q := qi.(*query.IoTDB)
+	q.HumanLabel = []byte(humanLabel)
+	q.HumanDescription = []byte(humanDesc)
+	q.SqlQuery = []byte(sql)
+}
+
+// fillInQuery fills the query struct with data.
+func (g *BaseGenerator) fillInAggregation(qi query.Query, humanLabel, humanDesc string, aggregationPaths []string, startTime, endTime time.Time) {
 	q := qi.(*query.IoTDB)
 	q.HumanLabel = []byte(humanLabel)
 	q.HumanDescription = []byte(humanDesc)
 
-	q.Path = []byte(path)
+	q.AggregatePaths = aggregationPaths
 	q.StartTime = startTime
 	q.EndTime = endTime
 }
