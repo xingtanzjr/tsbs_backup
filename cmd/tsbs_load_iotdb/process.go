@@ -51,12 +51,18 @@ type records struct {
 	timestamps   []int64
 }
 
-func (p *processor) pointsToRecords(points []*iotdbPoint) (records, []string) {
-	var rcds records
+type fastRecords struct {
+	deviceIds  []string
+	dataTypes  [][]client.TSDataType
+	values     [][]interface{}
+	timestamps []int64
+}
+
+func (p *processor) pointsToRecords(points []*iotdbPoint) (fastRecords, []string) {
+	var rcds fastRecords
 	var sqlList []string
 	for _, row := range points {
-		rcds.deviceId = append(rcds.deviceId, row.deviceID)
-		rcds.measurements = append(rcds.measurements, row.measurements)
+		rcds.deviceIds = append(rcds.deviceIds, row.deviceID)
 		rcds.dataTypes = append(rcds.dataTypes, row.dataTypes)
 		rcds.values = append(rcds.values, row.values)
 		rcds.timestamps = append(rcds.timestamps, row.timestamp)
@@ -143,15 +149,9 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 				sqlList = append(sqlList, tempSqlList...)
 				// using relative API according to "aligned-timeseries" setting
 				var err error
-				if p.useAlignedTimeseries {
-					_, err = p.session.InsertAlignedRecords(
-						rcds.deviceId, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
-					)
-				} else {
-					_, err = p.session.InsertRecords(
-						rcds.deviceId, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
-					)
-				}
+				_, err = p.session.FastInsertRecords(
+					rcds.deviceIds, rcds.dataTypes, rcds.values, rcds.timestamps,
+				)
 				if err != nil {
 					fatal("ProcessBatch error:%v", err)
 				}
@@ -194,3 +194,75 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 	rowCount = uint64(batch.rows)
 	return metricCount, rowCount
 }
+
+//func (p *processor) ProcessBatchUsingInsertRecords(b targets.Batch, doLoad bool) (metricCount, rowCount uint64) {
+//	batch := b.(*iotdbBatch)
+//
+//	// Write records
+//	if doLoad {
+//		if !p.loadToSCV {
+//			// insert records into the database
+//			var sqlList []string
+//			for index := 0; index < len(batch.points); {
+//				startIndex := index
+//				var endIndex int
+//				if p.recordsMaxRows > 0 {
+//					endIndex = minInt(len(batch.points), index+p.recordsMaxRows)
+//				} else {
+//					endIndex = len(batch.points)
+//				}
+//				rcds, tempSqlList := p.pointsToRecords(batch.points[startIndex:endIndex])
+//				sqlList = append(sqlList, tempSqlList...)
+//				// using relative API according to "aligned-timeseries" setting
+//				var err error
+//				if p.useAlignedTimeseries {
+//					_, err = p.session.InsertAlignedRecords(
+//						rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
+//					)
+//				} else {
+//					_, err = p.session.InsertRecords(
+//						rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
+//					)
+//				}
+//				if err != nil {
+//					fatal("ProcessBatch error:%v", err)
+//				}
+//				index = endIndex
+//			}
+//			// handle create timeseries SQL to insert tags
+//			for _, sql := range sqlList {
+//				_, err := p.session.ExecuteNonQueryStatement(sql)
+//				if err != nil {
+//					fatal("ProcessBatch SQL Execution error:%v", err)
+//				}
+//			}
+//		} else {
+//			// generate csv files. There is no requirement to connect to any database
+//			for index := 0; index < len(batch.points); index++ {
+//				point := batch.points[index]
+//				_, exist := p.filePtrMap[point.deviceID]
+//				if !exist {
+//					// create file pointer
+//					filepath := fmt.Sprintf("%s%s.csv", p.csvFilepathPrefix, point.deviceID)
+//					filePtr, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY, 0777)
+//					if err != nil {
+//						fatal(fmt.Sprintf("ERROR occurs while creating csv file for deviceID: %s, filepath: %s", point.deviceID, filepath))
+//						panic(err)
+//					}
+//					p.filePtrMap[point.deviceID] = filePtr
+//					// write header of this csv file
+//					header := generateCSVHeader(point)
+//					filePtr.WriteString(header)
+//				}
+//				filePtr := p.filePtrMap[point.deviceID]
+//				pointRowInCSV := generateCSVContent(point)
+//				filePtr.WriteString(pointRowInCSV)
+//			}
+//		}
+//
+//	}
+//
+//	metricCount = batch.metrics
+//	rowCount = uint64(batch.rows)
+//	return metricCount, rowCount
+//}
