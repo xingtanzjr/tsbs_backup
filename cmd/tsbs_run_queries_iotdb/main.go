@@ -93,17 +93,21 @@ func (p *processor) Init(workerNumber int) {
 func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	iotdbQ := q.(*query.IoTDB)
 	sql := string(iotdbQ.SqlQuery)
+	aggregatePaths := iotdbQ.AggregatePaths
 
 	start := time.Now().UnixNano()
 	var interval int64 = 60000
 	var startTimeInMills = iotdbQ.StartTime.UnixMilli()
 	var endTimeInMills = iotdbQ.EndTime.UnixMilli()
 	var dataSet *client.SessionDataSet
+	//fmt.Println("==================", aggregatePaths, startTimeInMills, endTimeInMills)
+
 	var err error
 	if startTimeInMills > 0 {
-		dataSet, err = p.session.ExecuteAggregationQuery([]string{sql},
+		dataSet, err = p.session.ExecuteAggregationQuery(aggregatePaths,
 			[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
 			&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs)
+
 	} else {
 		// 0 for no timeout
 		dataSet, err = p.session.ExecuteQueryStatement(sql, &timeoutInMs)
@@ -112,7 +116,7 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	if err == nil {
 		if p.printResponses {
 			if startTimeInMills > 0 {
-				sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%s, %s), %d)", iotdbQ.SqlQuery, iotdbQ.StartTime, iotdbQ.EndTime, interval)
+				sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%s, %s), %d)", iotdbQ.AggregatePaths, iotdbQ.StartTime, iotdbQ.EndTime, interval)
 			}
 			printDataSet(sql, dataSet)
 		} else {
