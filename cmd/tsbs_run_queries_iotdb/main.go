@@ -100,13 +100,14 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	var startTimeInMills = iotdbQ.StartTime.UnixMilli()
 	var endTimeInMills = iotdbQ.EndTime.UnixMilli()
 	var dataSet *client.SessionDataSet
+	var legalNodes = true
 	//fmt.Println("==================", aggregatePaths, startTimeInMills, endTimeInMills)
 
 	var err error
 	if startTimeInMills > 0 {
-		dataSet, err = p.session.ExecuteAggregationQuery(aggregatePaths,
+		dataSet, err = p.session.ExecuteAggregationQueryWithLegalNodes(aggregatePaths,
 			[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
-			&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs)
+			&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs, &legalNodes)
 
 	} else {
 		// 0 for no timeout
