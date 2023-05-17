@@ -149,6 +149,12 @@ func (sp *defaultStatProcessor) process(workers uint) {
 				intervalQueryRate,
 				overallQueryRate,
 			)
+			fmt.Printf("-- After %d queries with %d workers:\nInterval query rate: %0.2f queries/sec\tOverall query rate: %0.2f queries/sec\n",
+				i-sp.args.burnIn,
+				workers,
+				intervalQueryRate,
+				overallQueryRate,
+			)
 			if err != nil {
 				log.Fatal(err)
 			}
