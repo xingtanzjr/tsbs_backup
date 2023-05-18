@@ -94,21 +94,19 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	iotdbQ := q.(*query.IoTDB)
 	sql := string(iotdbQ.SqlQuery)
 	aggregatePaths := iotdbQ.AggregatePaths
-
-	start := time.Now().UnixNano()
 	var interval int64 = 60000
 	var startTimeInMills = iotdbQ.StartTime.UnixMilli()
 	var endTimeInMills = iotdbQ.EndTime.UnixMilli()
 	var dataSet *client.SessionDataSet
 	var legalNodes = true
-	//fmt.Println("==================", aggregatePaths, startTimeInMills, endTimeInMills)
-
 	var err error
+	// fmt.Printf("aggregatePaths: %s, startTime: %s, endTime: %s\n", aggregatePaths, iotdbQ.StartTime.Format("2006-01-02 15:04:05"), iotdbQ.EndTime.Format("2006-01-02 15:04:05"))
+
+	start := time.Now().UnixNano()
 	if startTimeInMills > 0 {
 		dataSet, err = p.session.ExecuteAggregationQueryWithLegalNodes(aggregatePaths,
 			[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
 			&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs, &legalNodes)
-		fmt.Printf("aggregatePaths: %s, startTime: %s, endTime: %s\n", aggregatePaths, iotdbQ.StartTime.Format("2006-01-02 15:04:05"), iotdbQ.EndTime.Format("2006-01-02 15:04:05"))
 	} else {
 		// 0 for no timeout
 		dataSet, err = p.session.ExecuteQueryStatement(sql, &timeoutInMs)
