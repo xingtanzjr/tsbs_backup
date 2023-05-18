@@ -30,7 +30,7 @@ func (g *BaseGenerator) fillInQuery(qi query.Query, humanLabel, humanDesc, sql s
 }
 
 // fillInQuery fills the query struct with data.
-func (g *BaseGenerator) fillInAggregation(qi query.Query, humanLabel, humanDesc string, aggregationPaths []string, startTime, endTime time.Time) {
+func (g *BaseGenerator) fillInAggregation(qi query.Query, humanLabel, humanDesc string, aggregationPaths []string, startTime, endTime int64) {
 	q := qi.(*query.IoTDB)
 	q.HumanLabel = []byte(humanLabel)
 	q.HumanDescription = []byte(humanDesc)

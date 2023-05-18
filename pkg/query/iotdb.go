@@ -3,7 +3,6 @@ package query
 import (
 	"fmt"
 	"sync"
-	"time"
 )
 
 // IoTDB encodes a IoTDB request. This will be serialized for use
@@ -14,8 +13,8 @@ type IoTDB struct {
 	id               uint64
 
 	AggregatePaths []string
-	StartTime      time.Time
-	EndTime        time.Time
+	StartTime      int64
+	EndTime        int64
 	SqlQuery       []byte
 }
 
@@ -71,8 +70,8 @@ func (q *IoTDB) Release() {
 	q.id = 0
 
 	q.AggregatePaths = q.AggregatePaths[:0]
-	q.StartTime = time.Time{}
-	q.EndTime = time.Time{}
+	q.StartTime = 0
+	q.EndTime = 0
 	q.SqlQuery = q.SqlQuery[:0]
 
 	IoTDBPool.Put(q)

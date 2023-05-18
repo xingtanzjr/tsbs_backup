@@ -120,7 +120,7 @@ func (d *Devops) GroupByTime(qi query.Query, nHosts, numMetrics int, timeRange t
 	humanLabel := fmt.Sprintf("IoTDB %d cpu metric(s), random %4d hosts, random %s by 1m", numMetrics, nHosts, timeRange)
 	humanDesc := fmt.Sprintf("%s: %s", humanLabel, interval.StartString())
 
-	d.fillInAggregation(qi, humanLabel, humanDesc, aggregatePaths, interval.Start(), interval.End())
+	d.fillInAggregation(qi, humanLabel, humanDesc, aggregatePaths, interval.Start().UnixMilli(), interval.End().UnixMilli())
 }
 
 // GroupByTimeAndPrimaryTag selects the AVG of numMetrics metrics under 'cpu' per device per hour for a day,

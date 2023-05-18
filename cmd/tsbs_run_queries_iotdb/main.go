@@ -95,8 +95,8 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	sql := string(iotdbQ.SqlQuery)
 	aggregatePaths := iotdbQ.AggregatePaths
 	var interval int64 = 60000
-	var startTimeInMills = iotdbQ.StartTime.UnixMilli()
-	var endTimeInMills = iotdbQ.EndTime.UnixMilli()
+	var startTimeInMills = iotdbQ.StartTime
+	var endTimeInMills = iotdbQ.EndTime
 	var dataSet *client.SessionDataSet
 	var legalNodes = true
 	var err error
@@ -115,7 +115,7 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	if err == nil {
 		if p.printResponses {
 			if startTimeInMills > 0 {
-				sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%s, %s), %d)", iotdbQ.AggregatePaths, iotdbQ.StartTime, iotdbQ.EndTime, interval)
+				sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)", iotdbQ.AggregatePaths, iotdbQ.StartTime, iotdbQ.EndTime, interval)
 			}
 			printDataSet(sql, dataSet)
 		} else {
