@@ -41,8 +41,8 @@ func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 	buf1 = append(buf1, []byte("deviceID,timestamp")...)
 	datatype_buf := make([]byte, 0, defaultBufSize)
 	datatype_buf = append(datatype_buf, []byte("datatype")...)
-	tags_buf := make([]byte, 0, defaultBufSize)
-	tags_buf = append(tags_buf, []byte("tags")...)
+	// tags_buf := make([]byte, 0, defaultBufSize)
+	// tags_buf = append(tags_buf, []byte("tags")...)
 	tempBuf := make([]byte, 0, defaultBufSize)
 	var hostname string
 	foundHostname := false
@@ -52,27 +52,29 @@ func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 		if keyStr := string(tagKeys[i]); keyStr == "hostname" {
 			foundHostname = true
 			hostname = v.(string)
-		} else {
-			// handle other tags
-
-			// buf1 = append(buf1, ',')
-			// buf1 = append(buf1, tagKeys[i]...)
-			// valueInStrByte, datatype := iotdbFormat(v)
-			// tempBuf = append(tempBuf, ',')
-			// tempBuf = append(tempBuf, valueInStrByte...)
-			// datatype_buf = append(datatype_buf, ',')
-			// datatype_buf = append(datatype_buf, []byte(fmt.Sprintf("%d", datatype))...)
-			valueInStrByte, datatype := IotdbFormat(v)
-			if datatype == client.TEXT {
-				tagStr := fmt.Sprintf(",%s='%s'", keyStr, string(valueInStrByte))
-				tags_buf = append(tags_buf, []byte(tagStr)...)
-			} else {
-				tagStr := fmt.Sprintf(",%s=", keyStr)
-				tags_buf = append(tags_buf, []byte(tagStr)...)
-				tags_buf = append(tags_buf, valueInStrByte...)
-			}
 		}
 	}
+	//	else {
+	//		// handle other tags
+	//
+	//		// buf1 = append(buf1, ',')
+	//		// buf1 = append(buf1, tagKeys[i]...)
+	//		// valueInStrByte, datatype := iotdbFormat(v)
+	//		// tempBuf = append(tempBuf, ',')
+	//		// tempBuf = append(tempBuf, valueInStrByte...)
+	//		// datatype_buf = append(datatype_buf, ',')
+	//		// datatype_buf = append(datatype_buf, []byte(fmt.Sprintf("%d", datatype))...)
+	//		valueInStrByte, datatype := IotdbFormat(v)
+	//		if datatype == client.TEXT {
+	//			tagStr := fmt.Sprintf(",%s='%s'", keyStr, string(valueInStrByte))
+	//			tags_buf = append(tags_buf, []byte(tagStr)...)
+	//		} else {
+	//			tagStr := fmt.Sprintf(",%s=", keyStr)
+	//			tags_buf = append(tags_buf, []byte(tagStr)...)
+	//			tags_buf = append(tags_buf, valueInStrByte...)
+	//		}
+	//	}
+	//}
 	if !foundHostname {
 		// Unable to find hostname as part of device id
 		hostname = "unknown"
@@ -96,7 +98,7 @@ func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 	buf1 = append(buf1, '\n')
 	buf2 = append(buf2, '\n')
 	datatype_buf = append(datatype_buf, '\n')
-	tags_buf = append(tags_buf, '\n')
+	// tags_buf = append(tags_buf, '\n')
 	_, err := w.Write(buf1)
 	if err == nil {
 		_, err = w.Write(buf2)
@@ -104,9 +106,9 @@ func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 	if err == nil {
 		_, err = w.Write(datatype_buf)
 	}
-	if err == nil {
-		_, err = w.Write(tags_buf)
-	}
+	//if err == nil {
+	//	_, err = w.Write(tags_buf)
+	//}
 	return err
 }
 
