@@ -25,7 +25,7 @@ type processor struct {
 	storeTags            bool // store tags if set true. Can NOT be used if useAlignedTimeseries is set true.
 }
 
-func (p *processor) Init(numWorker int, doLoad, _ bool) {
+func (p *processor) Init(numWorker int, doLoad, hashWorkers bool) {
 	p.numWorker = numWorker
 	if !doLoad {
 		return

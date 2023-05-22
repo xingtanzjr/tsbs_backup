@@ -98,7 +98,7 @@ func init() {
 		UserName: user,
 		Password: password,
 	}
-
+	loaderConfig.HashWorkers = true
 	loader = load.GetBenchmarkRunner(loaderConfig)
 }
 
