@@ -28,6 +28,7 @@ var (
 	csvFilepathPrefix    string // Prefix of filepath for csv files. Specific a folder or a folder with filename prefix.
 	useAlignedTimeseries bool   // using aligned timeseries if set true.
 	storeTags            bool   // store tags if set true. Can NOT be used if useAlignedTimeseries is set true.
+	channelCapacity      int
 )
 
 // Global vars
@@ -68,6 +69,7 @@ func init() {
 	csvFilepathPrefix = viper.GetString("csv-prefix")
 	useAlignedTimeseries = viper.GetBool("aligned-timeseries")
 	storeTags = viper.GetBool("store-tags")
+	channelCapacity = viper.GetInt("channel-capacity")
 
 	workers := viper.GetUint("workers")
 
@@ -99,6 +101,7 @@ func init() {
 		Password: password,
 	}
 	loaderConfig.HashWorkers = true
+	loaderConfig.ChannelCapacity = uint(channelCapacity)
 	loader = load.GetBenchmarkRunner(loaderConfig)
 }
 
