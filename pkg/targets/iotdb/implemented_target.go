@@ -34,6 +34,7 @@ func (t *iotdbTarget) TargetSpecificFlags(flagPrefix string, flagSet *pflag.Flag
 	flagSet.Bool(flagPrefix+"store-tags", false, "Store tags if set true. Can NOT be used if aligned-timeseries is set true.")
 	//flagSet.Bool(flagPrefix+"hash-workers", false, "Consistently send the same hostnames to the same worker if set true.")
 	flagSet.Int(flagPrefix+"channel-capacity", 0, "Capacity of channel")
+	flagSet.Bool(flagPrefix+"flow-control", true, "Flow Control")
 }
 
 func (t *iotdbTarget) TargetName() string {
