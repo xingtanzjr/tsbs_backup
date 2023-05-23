@@ -100,8 +100,13 @@ func init() {
 		UserName: user,
 		Password: password,
 	}
-	loaderConfig.HashWorkers = true
-	loaderConfig.ChannelCapacity = uint(channelCapacity)
+
+	if channelCapacity > 0 {
+		loaderConfig.HashWorkers = true
+		loaderConfig.NoFlowControl = true
+		loaderConfig.ChannelCapacity = uint(channelCapacity)
+	}
+
 	loader = load.GetBenchmarkRunner(loaderConfig)
 }
 
