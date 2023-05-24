@@ -119,7 +119,7 @@ func TestGenerateInsertStatement(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.description, func(t *testing.T) {
 			require.True(t, len(c.lines) == 4)
-			actual := parseThreeLines(c.lines[0], c.lines[1], c.lines[2], c.lines[3])
+			actual := parseLine(c.lines[0], c.lines[1], c.lines[2], c.lines[3])
 			require.EqualValues(t, &c.expected, actual.Data.(*iotdbPoint))
 		})
 	}

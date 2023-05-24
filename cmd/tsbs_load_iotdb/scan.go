@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/timescale/tsbs/pkg/targets/iotdb"
 	"strconv"
 	"strings"
 	"time"
@@ -66,76 +67,25 @@ type fileDataSource struct {
 	scanner *bufio.Scanner
 }
 
-// read new four line, which store one data point
-// e.g.,
-// deviceID,timestamp,<fieldName1>,<fieldName2>,<fieldName3>,...
-// <deviceID>,<timestamp>,<field1>,<field2>,<field3>,...
-// datatype,<datatype1>,<datatype2>,<datatype3>,...
-// tags,<tagName1>=<tagValue1>,<tagName2>=<tagValue2>,...
-//
-// deviceID,timestamp,hostname,value
-// root.cpu.host_1,1451606400000000000,'host_1',44.0
-// datatype,5,2
-// tags,region='eu-west-1',datacenter='eu-west-1c',rack='87',
-//
-// return : bool -> true means got one point, else reaches EOF or error happens
-func (d *fileDataSource) nextThreeLines() (bool, string, string, string, error) {
-	ok := d.scanner.Scan()
-	if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
-		return false, "", "", "", nil
-	} else if !ok {
-		return false, "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
-	}
-	line1 := d.scanner.Text()
+func parseLine(line string) data.LoadedPoint {
+	lineParts := strings.Split(line, ",") // deviceID and rest values of fields
+	deviceID := lineParts[0]
+	deviceType := strings.Split(deviceID, ".")[2]
 
-	ok = d.scanner.Scan()
-	if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
-		return false, "", "", "", nil
-	} else if !ok {
-		return false, "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
-	}
-	line2 := d.scanner.Text()
+	dataTypes := iotdb.GlobalDataTypeMap[deviceType]
+	measurements := iotdb.GlobalMeasurementMap[deviceType]
 
-	ok = d.scanner.Scan()
-	if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
-		return false, "", "", "", nil
-	} else if !ok {
-		return false, "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
-	}
-	line3 := d.scanner.Text()
-
-	return true, line1, line2, line3, nil
-
-	//ok = d.scanner.Scan()
-	//if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
-	//	return false, "", "", "", "", nil
-	//} else if !ok {
-	//	return false, "", "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
-	//}
-	//line4 := d.scanner.Text()
-}
-
-func parseThreeLines(line1 string, line2 string, line3 string) data.LoadedPoint {
-	line1_parts := strings.Split(line1, ",") // 'deviceID' and rest keys of fields
-	line2_parts := strings.Split(line2, ",") // deviceID and rest values of fields
-	line3_parts := strings.Split(line3, ",") // deviceID and rest values of fields
-	// line4_parts := strings.SplitN(line4, ",", 2) // 'tags' and string of tags
-	timestamp, err := strconv.ParseInt(line2_parts[1], 10, 64)
+	timestamp, err := strconv.ParseInt(lineParts[1], 10, 64)
 	if err != nil {
 		fatal("timestamp convert err: %v", err)
 	}
 
 	timestamp = timestamp / int64(time.Millisecond)
-	var measurements []string
+
 	var values []interface{}
-	var dataTypes []client.TSDataType
-	// handle measurements, datatype and values
-	measurements = append(measurements, line1_parts[2:]...)
-	for type_index := 1; type_index < len(line3_parts); type_index++ {
-		value_index := type_index + 1
-		datatype, _ := strconv.ParseInt(line3_parts[type_index], 10, 8)
-		dataTypes = append(dataTypes, client.TSDataType(datatype))
-		value, err := parseDataToInterface(client.TSDataType(datatype), line2_parts[value_index])
+
+	for idx := 2; idx < len(lineParts); idx++ {
+		value, err := parseDataToInterface(dataTypes[idx-2], lineParts[idx])
 		if err != nil {
 			panic(fmt.Errorf("iotdb fileDataSource NextItem Parse error:%v", err))
 		}
@@ -144,28 +94,26 @@ func parseThreeLines(line1 string, line2 string, line3 string) data.LoadedPoint 
 
 	return data.NewLoadedPoint(
 		&iotdbPoint{
-			deviceID:     line2_parts[0],
+			deviceID:     lineParts[0],
 			timestamp:    timestamp,
 			measurements: measurements,
 			values:       values,
 			dataTypes:    dataTypes,
 			tagString:    "",
-			fieldsCnt:    uint64(len(line1_parts) - 2),
+			fieldsCnt:    uint64(len(measurements)),
 		})
 }
 
 func (d *fileDataSource) NextItem() data.LoadedPoint {
-	// TODO make nextThreeLines efficient
-	scan_ok, line1, line2, line3, err := d.nextThreeLines()
-	if !scan_ok {
-		if err == nil { // End of file
-			return data.LoadedPoint{}
-		} else { // Some error occurred
-			fatal("IoTDB scan error: %v", err)
-			return data.LoadedPoint{}
-		}
+	ok := d.scanner.Scan()
+	if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
+		return data.LoadedPoint{}
+	} else if !ok {
+		return data.LoadedPoint{}
 	}
-	return parseThreeLines(line1, line2, line3)
+	line := d.scanner.Text()
+
+	return parseLine(line)
 }
 
 func (d *fileDataSource) Headers() *common.GeneratedDataHeaders { return nil }
