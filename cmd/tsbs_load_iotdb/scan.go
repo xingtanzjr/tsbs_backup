@@ -6,6 +6,8 @@ import (
 	"github.com/timescale/tsbs/pkg/data/usecases/common"
 	"github.com/timescale/tsbs/pkg/targets"
 	"github.com/timescale/tsbs/pkg/targets/iotdb"
+
+	// "github.com/timescale/tsbs/pkg/targets/iotdb"
 	"strings"
 )
 
@@ -40,12 +42,14 @@ func (d *fileDataSource) NextItem() data.LoadedPoint {
 	line := d.scanner.Text()
 
 	lineParts := strings.SplitN(line, ",", 2) // deviceID and rest values of fields
+	metrics := strings.Split(lineParts[0], ".")
+	metric := metrics[len(metrics)-2]
 
 	return data.NewLoadedPoint(
 		&iotdbPoint{
 			deviceID:  lineParts[0],
 			values:    lineParts[1],
-			fieldsCnt: len(iotdb.GlobalDataTypeMap[lineParts[0]]),
+			fieldsCnt: len(iotdb.GlobalDataTypeMap[metric]),
 		})
 }
 
@@ -56,13 +60,10 @@ func (b *iotdbBatch) Len() uint {
 }
 
 func (b *iotdbBatch) Append(item data.LoadedPoint) {
-	that := item.Data.([]byte)
-	line := string(that)
-	splits := strings.Split(line, ",")
-
+	that := item.Data.(*iotdbPoint)
 	b.rows++
-	b.metrics += uint64(len(splits) - 2)
-	// b.m[that.deviceID] = append(b.m[that.deviceID], that.values)
+	b.metrics += uint64(that.fieldsCnt)
+	b.m[that.deviceID] = append(b.m[that.deviceID], that.values)
 }
 
 type factory struct{}
