@@ -5,15 +5,15 @@ import (
 	"github.com/timescale/tsbs/pkg/data"
 	"github.com/timescale/tsbs/pkg/data/usecases/common"
 	"github.com/timescale/tsbs/pkg/targets"
+	"github.com/timescale/tsbs/pkg/targets/iotdb"
 	"strings"
 )
 
 // iotdbPoint is a single record(row) of data
 type iotdbPoint struct {
-	//deviceID  string // the deviceID(path) of this record, e.g. "root.cpu.host_0"
-	//values    string
-	//fieldsCnt uint64
-
+	deviceID  string // the deviceID(path) of this record, e.g. "root.cpu.host_0"
+	values    string
+	fieldsCnt int
 }
 
 // A struct that storages data points
@@ -35,18 +35,18 @@ func (d *fileDataSource) NextItem() data.LoadedPoint {
 		return data.LoadedPoint{}
 	}
 
-	return data.NewLoadedPoint(d.scanner.Bytes())
+	// return data.NewLoadedPoint(d.scanner.Bytes())
 
-	// line := d.scanner.Text()
+	line := d.scanner.Text()
 
-	// lineParts := strings.SplitN(line, ",", 2) // deviceID and rest values of fields
+	lineParts := strings.SplitN(line, ",", 2) // deviceID and rest values of fields
 
-	//return data.NewLoadedPoint(
-	//	&iotdbPoint{
-	//		deviceID:  lineParts[0],
-	//		values:    lineParts[1],
-	//		fieldsCnt: uint64(iotdb.GlobalDataTypeMap[]),
-	//	})
+	return data.NewLoadedPoint(
+		&iotdbPoint{
+			deviceID:  lineParts[0],
+			values:    lineParts[1],
+			fieldsCnt: len(iotdb.GlobalDataTypeMap[lineParts[0]]),
+		})
 }
 
 func (d *fileDataSource) Headers() *common.GeneratedDataHeaders { return nil }

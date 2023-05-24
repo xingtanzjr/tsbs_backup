@@ -8,7 +8,6 @@ import (
 	"github.com/timescale/tsbs/load"
 	"github.com/timescale/tsbs/pkg/data"
 	"github.com/timescale/tsbs/pkg/targets"
-	"github.com/timescale/tsbs/pkg/targets/iotdb"
 	"math"
 )
 
@@ -35,7 +34,7 @@ type iotdbIndexer struct {
 
 func (i *iotdbIndexer) GetIndex(item data.LoadedPoint) uint {
 	p := item.Data.(*iotdbPoint)
-	idx, ok := iotdb.MetricDeviceIdx[p.deviceID]
+	idx, ok := i.cache[p.deviceID]
 	if ok {
 		return idx
 	}
