@@ -2,13 +2,15 @@ package main
 
 import (
 	"fmt"
+	//"github.com/timescale/tsbs/pkg/data"
 	"os"
-	"strconv"
-	"strings"
+	//"strconv"
+	//"strings"
+	//"time"
 
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/timescale/tsbs/pkg/targets"
-	"github.com/timescale/tsbs/pkg/targets/iotdb"
+	//"github.com/timescale/tsbs/pkg/targets/iotdb"
 )
 
 type processor struct {
@@ -44,153 +46,170 @@ func (p *processor) Init(numWorker int, doLoad, hashWorkers bool) {
 }
 
 type records struct {
-	deviceId     []string
+	deviceIds    []string
 	measurements [][]string
 	dataTypes    [][]client.TSDataType
 	values       [][]interface{}
 	timestamps   []int64
 }
 
-func (p *processor) pointsToRecords(points []*iotdbPoint) (records, []string) {
-	var rcds records
-	var sqlList []string
-	for _, row := range points {
-		rcds.deviceId = append(rcds.deviceId, row.deviceID)
-		rcds.measurements = append(rcds.measurements, row.measurements)
-		rcds.dataTypes = append(rcds.dataTypes, row.dataTypes)
-		rcds.values = append(rcds.values, row.values)
-		rcds.timestamps = append(rcds.timestamps, row.timestamp)
-		// append tags if "storeTags" is set true
-		if p.storeTags {
-			_, exist := p.ProcessedTagsDeviceIDMap[row.deviceID]
-			if !exist {
-				sqlList = append(sqlList, row.generateTagsAttributesSQL())
-				p.ProcessedTagsDeviceIDMap[row.deviceID] = true
-			}
-		}
-	}
-	return rcds, sqlList
-}
-
-func minInt(x int, y int) int {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func getStringOfDatatype(datatype client.TSDataType) string {
-	switch datatype {
-	case client.BOOLEAN:
-		return "BOOLEAN"
-	case client.DOUBLE:
-		return "DOUBLE"
-	case client.FLOAT:
-		return "FLOAT"
-	case client.INT32:
-		return "INT32"
-	case client.INT64:
-		return "INT64"
-	case client.TEXT:
-		return "TEXT"
-	case client.UNKNOWN:
-		return "UNKNOWN"
-	default:
-		return "UNKNOWN"
-	}
-}
-
-func generateCSVHeader(point *iotdbPoint) string {
-	header := "Time"
-	for index, dataType := range point.dataTypes {
-		meta := fmt.Sprintf(",%s.%s(%s)", point.deviceID, point.measurements[index],
-			getStringOfDatatype(dataType))
-		header = header + meta
-	}
-	header = header + "\n"
-	return header
-}
-
-func generateCSVContent(point *iotdbPoint) string {
-	var valueList []string
-	valueList = append(valueList, strconv.FormatInt(point.timestamp, 10))
-	for _, value := range point.values {
-		valueInStrByte, _ := iotdb.IotdbFormat(value)
-		valueList = append(valueList, string(valueInStrByte))
-	}
-	content := strings.Join(valueList, ",")
-	content += "\n"
-	return content
-}
+//func (p *processor) pointsToRecords(points []*iotdbPoint) (records, []string) {
+//	var rcds records
+//	// var sqlList []string = nil
+//	for _, row := range points {
+//		rcds.deviceIds = append(rcds.deviceIds, row.deviceID)
+//		rcds.measurements = append(rcds.measurements, row.measurements)
+//		//rcds.dataTypes = append(rcds.dataTypes, row.dataTypes)
+//		rcds.values = append(rcds.values, row.values)
+//		rcds.timestamps = append(rcds.timestamps, row.timestamp)
+//	}
+//	return rcds, nil
+//}
+//
+//func minInt(x int, y int) int {
+//	if x < y {
+//		return x
+//	}
+//	return y
+//}
+//
+//func generateCSVContent(point *iotdbPoint) string {
+//	var valueList []string
+//	valueList = append(valueList, strconv.FormatInt(point.timestamp, 10))
+//	for _, value := range point.values {
+//		valueInStrByte, _ := iotdb.IotdbFormat(value)
+//		valueList = append(valueList, string(valueInStrByte))
+//	}
+//	content := strings.Join(valueList, ",")
+//	content += "\n"
+//	return content
+//}
 
 func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, rowCount uint64) {
 	batch := b.(*iotdbBatch)
 
 	// Write records
 	if doLoad {
-		if !p.loadToSCV {
-			// insert records into the database
-			var sqlList []string
-			for index := 0; index < len(batch.points); {
-				startIndex := index
-				var endIndex int
-				if p.recordsMaxRows > 0 {
-					endIndex = minInt(len(batch.points), index+p.recordsMaxRows)
-				} else {
-					endIndex = len(batch.points)
-				}
-				rcds, tempSqlList := p.pointsToRecords(batch.points[startIndex:endIndex])
-				sqlList = append(sqlList, tempSqlList...)
-				// using relative API according to "aligned-timeseries" setting
-				var err error
-				if p.useAlignedTimeseries {
-					_, err = p.session.InsertAlignedRecords(
-						rcds.deviceId, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
-					)
-				} else {
-					_, err = p.session.InsertRecords(
-						rcds.deviceId, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
-					)
-				}
-				if err != nil {
-					fatal("ProcessBatch error:%v", err)
-				}
-				index = endIndex
-			}
-			// handle create timeseries SQL to insert tags
-			for _, sql := range sqlList {
-				_, err := p.session.ExecuteNonQueryStatement(sql)
-				if err != nil {
-					fatal("ProcessBatch SQL Execution error:%v", err)
-				}
-			}
-		} else {
-			// generate csv files. There is no requirement to connect to any database
-			for index := 0; index < len(batch.points); index++ {
-				point := batch.points[index]
-				_, exist := p.filePtrMap[point.deviceID]
-				if !exist {
-					// create file pointer
-					filepath := fmt.Sprintf("%s%s.csv", p.csvFilepathPrefix, point.deviceID)
-					filePtr, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY, 0777)
-					if err != nil {
-						fatal(fmt.Sprintf("ERROR occurs while creating csv file for deviceID: %s, filepath: %s", point.deviceID, filepath))
-						panic(err)
-					}
-					p.filePtrMap[point.deviceID] = filePtr
-					// write header of this csv file
-					header := generateCSVHeader(point)
-					filePtr.WriteString(header)
-				}
-				filePtr := p.filePtrMap[point.deviceID]
-				pointRowInCSV := generateCSVContent(point)
-				filePtr.WriteString(pointRowInCSV)
-			}
-		}
-
+		//if !p.loadToSCV {
+		//	// insert records into the database
+		//	var sqlList []string
+		//	for index := 0; index < len(batch.points); {
+		//		startIndex := index
+		//		var endIndex int
+		//		if p.recordsMaxRows > 0 {
+		//			endIndex = minInt(len(batch.points), index+p.recordsMaxRows)
+		//		} else {
+		//			endIndex = len(batch.points)
+		//		}
+		//		rcds, tempSqlList := p.pointsToRecords(batch.points[startIndex:endIndex])
+		//		sqlList = append(sqlList, tempSqlList...)
+		//		// using relative API according to "aligned-timeseries" setting
+		//		var err error
+		//		if p.useAlignedTimeseries {
+		//			_, err = p.session.InsertAlignedRecords(
+		//				rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
+		//			)
+		//		} else {
+		//			_, err = p.session.InsertRecords(
+		//				rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
+		//			)
+		//		}
+		//		if err != nil {
+		//			fatal("ProcessBatch error:%v", err)
+		//		}
+		//		index = endIndex
+		//	}
+		//	// handle create timeseries SQL to insert tags
+		//	for _, sql := range sqlList {
+		//		_, err := p.session.ExecuteNonQueryStatement(sql)
+		//		if err != nil {
+		//			fatal("ProcessBatch SQL Execution error:%v", err)
+		//		}
+		//	}
+		//} else {
+		//	// generate csv files. There is no requirement to connect to any database
+		//	for index := 0; index < len(batch.points); index++ {
+		//		point := batch.points[index]
+		//		_, exist := p.filePtrMap[point.deviceID]
+		//		if !exist {
+		//			// create file pointer
+		//			filepath := fmt.Sprintf("%s%s.csv", p.csvFilepathPrefix, point.deviceID)
+		//			filePtr, err := os.OpenFile(filepath, os.O_CREATE|os.O_WRONLY, 0777)
+		//			if err != nil {
+		//				fatal(fmt.Sprintf("ERROR occurs while creating csv file for deviceID: %s, filepath: %s", point.deviceID, filepath))
+		//				panic(err)
+		//			}
+		//			p.filePtrMap[point.deviceID] = filePtr
+		//		}
+		//		filePtr := p.filePtrMap[point.deviceID]
+		//		pointRowInCSV := generateCSVContent(point)
+		//		filePtr.WriteString(pointRowInCSV)
+		//	}
+		//}
 	}
 
 	metricCount = batch.metrics
 	rowCount = uint64(batch.rows)
 	return metricCount, rowCount
 }
+
+//func parseLine(line string) data.LoadedPoint {
+//	lineParts := strings.Split(line, ",") // deviceID and rest values of fields
+//	deviceID := lineParts[0]
+//	deviceType := strings.Split(deviceID, ".")[2]
+//
+//	dataTypes := iotdb.GlobalDataTypeMap[deviceType]
+//	measurements := iotdb.GlobalMeasurementMap[deviceType]
+//
+//	timestamp, err := strconv.ParseInt(lineParts[1], 10, 64)
+//	if err != nil {
+//		fatal("timestamp convert err: %v", err)
+//	}
+//
+//	timestamp = timestamp / int64(time.Millisecond)
+//
+//	var values []interface{}
+//
+//	for idx := 2; idx < len(lineParts); idx++ {
+//		value, err := parseDataToInterface(dataTypes[idx-2], lineParts[idx])
+//		if err != nil {
+//			panic(fmt.Errorf("iotdb fileDataSource NextItem Parse error:%v", err))
+//		}
+//		values = append(values, value)
+//	}
+//
+//	return data.NewLoadedPoint(
+//		&iotdbPoint{
+//			deviceID:  lineParts[0],
+//			timestamp: timestamp,
+//			values:    values,
+//			fieldsCnt: uint64(len(measurements)),
+//		})
+//}
+//
+//// parse datatype and convert string into interface
+//func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, error) {
+//	switch client.TSDataType(datatype) {
+//	case client.BOOLEAN:
+//		value, err := strconv.ParseBool(str)
+//		return interface{}(value), err
+//	case client.INT32:
+//		value, err := strconv.ParseInt(str, 10, 32)
+//		return interface{}(int32(value)), err
+//	case client.INT64:
+//		value, err := strconv.ParseInt(str, 10, 64)
+//		return interface{}(int64(value)), err
+//	case client.FLOAT:
+//		value, err := strconv.ParseFloat(str, 32)
+//		return interface{}(float32(value)), err
+//	case client.DOUBLE:
+//		value, err := strconv.ParseFloat(str, 64)
+//		return interface{}(float64(value)), err
+//	case client.TEXT:
+//		return interface{}(str), nil
+//	case client.UNKNOWN:
+//		return interface{}(nil), fmt.Errorf("datatype client.UNKNOW, value:%s", str)
+//	default:
+//		return interface{}(nil), fmt.Errorf("unknown datatype, value:%s", str)
+//	}
+//}

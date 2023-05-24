@@ -9,8 +9,18 @@ var (
 	GlobalMeasurementMap  = make(map[string][]string)
 	GlobalDataTypeMap     = make(map[string][]client.TSDataType)
 
-	allMetrics      = []string{"cpu", "diskio", "disk", "kernel", "mem", "net", "nginx", "postgresl", "redis"}
-	metricDeviceIdx = make(map[string]int)
+	AllMetrics = map[string]uint{
+		"cpu":       0,
+		"diskio":    1,
+		"disk":      2,
+		"kernel":    3,
+		"mem":       4,
+		"net":       5,
+		"nginx":     6,
+		"postgresl": 7,
+		"redis":     8,
+	}
+	MetricDeviceIdx = make(map[string]uint)
 
 	cpuFields = []string{
 		"usage_user",

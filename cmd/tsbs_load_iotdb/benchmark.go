@@ -2,13 +2,13 @@ package main
 
 import (
 	"bufio"
-	"github.com/timescale/tsbs/pkg/data"
-	"hash"
-	"hash/fnv"
-
 	"github.com/apache/iotdb-client-go/client"
 	"github.com/timescale/tsbs/load"
+	"github.com/timescale/tsbs/pkg/data"
 	"github.com/timescale/tsbs/pkg/targets"
+	"github.com/timescale/tsbs/pkg/targets/iotdb"
+	"hash"
+	"hash/fnv"
 )
 
 func newBenchmark(clientConfig client.Config, loaderConfig load.BenchmarkRunnerConfig) targets.Benchmark {
@@ -32,12 +32,15 @@ type iotdbIndexer struct {
 
 func (indexer *iotdbIndexer) GetIndex(item data.LoadedPoint) uint {
 	p := item.Data.(*iotdbPoint)
-	indexer.hasher.Reset()
-	_, err := indexer.hasher.Write([]byte(p.deviceID))
-	if err != nil {
-		return 0
+	value, ok := iotdb.MetricDeviceIdx[p.deviceID]
+	if ok {
+		return value
 	}
-	return uint(indexer.hasher.Sum32()) % indexer.maxPartitions
+
+	idx := getDeviceIdx(p.deviceID, indexer.maxPartitions)
+	iotdb.MetricDeviceIdx[p.deviceID] = idx
+
+	return idx
 }
 
 func (b *iotdbBenchmark) GetDataSource() targets.DataSource {
@@ -66,4 +69,22 @@ func (b *iotdbBenchmark) GetDBCreator() targets.DBCreator {
 	return &dbCreator{
 		loadToSCV: loadToSCV,
 	}
+}
+
+func getDeviceIdx(host string, maxPartitions uint) uint {
+	return 0
+	//splits := strings.Split(host, ".")
+	//db := splits[len(splits)-2]
+	//device := splits[len(splits)-1]
+	//
+	//idx := 0
+	//for _, s := range device {
+	//	if s == '0' || s == '1' {
+	//		idx = idx * 10 + int(s-'0')
+	//	}
+	//}
+	//
+	//idx := int(iotdb.AllMetrics[db]) * (int)maxPartitions / 9 + idx % 9
+	//
+	//return uint(idx % 9)
 }
