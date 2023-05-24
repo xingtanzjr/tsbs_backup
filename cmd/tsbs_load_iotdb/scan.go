@@ -87,10 +87,7 @@ func (d *fileDataSource) nextThreeLines() (bool, string, string, string, error) 
 		return false, "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
 	}
 	line1 := d.scanner.Text()
-	line_ok := strings.HasPrefix(line1, "deviceID,timestamp,")
-	if !line_ok {
-		return false, line1, "", "", fmt.Errorf("scan error, illegal line: %s", line1)
-	}
+
 	ok = d.scanner.Scan()
 	if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
 		return false, "", "", "", nil
@@ -98,6 +95,7 @@ func (d *fileDataSource) nextThreeLines() (bool, string, string, string, error) 
 		return false, "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
 	}
 	line2 := d.scanner.Text()
+
 	ok = d.scanner.Scan()
 	if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
 		return false, "", "", "", nil
@@ -105,6 +103,9 @@ func (d *fileDataSource) nextThreeLines() (bool, string, string, string, error) 
 		return false, "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
 	}
 	line3 := d.scanner.Text()
+
+	return true, line1, line2, line3, nil
+
 	//ok = d.scanner.Scan()
 	//if !ok && d.scanner.Err() == nil { // nothing scanned & no error = EOF
 	//	return false, "", "", "", "", nil
@@ -112,7 +113,6 @@ func (d *fileDataSource) nextThreeLines() (bool, string, string, string, error) 
 	//	return false, "", "", "", "", fmt.Errorf("scan error: %v", d.scanner.Err())
 	//}
 	//line4 := d.scanner.Text()
-	return true, line1, line2, line3, nil
 }
 
 func parseThreeLines(line1 string, line2 string, line3 string) data.LoadedPoint {
@@ -124,6 +124,7 @@ func parseThreeLines(line1 string, line2 string, line3 string) data.LoadedPoint 
 	if err != nil {
 		fatal("timestamp convert err: %v", err)
 	}
+
 	timestamp = timestamp / int64(time.Millisecond)
 	var measurements []string
 	var values []interface{}
@@ -140,6 +141,7 @@ func parseThreeLines(line1 string, line2 string, line3 string) data.LoadedPoint 
 		}
 		values = append(values, value)
 	}
+
 	return data.NewLoadedPoint(
 		&iotdbPoint{
 			deviceID:     line2_parts[0],
@@ -153,6 +155,7 @@ func parseThreeLines(line1 string, line2 string, line3 string) data.LoadedPoint 
 }
 
 func (d *fileDataSource) NextItem() data.LoadedPoint {
+	// TODO make nextThreeLines efficient
 	scan_ok, line1, line2, line3, err := d.nextThreeLines()
 	if !scan_ok {
 		if err == nil { // End of file
