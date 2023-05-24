@@ -36,79 +36,28 @@ const defaultBufSize = 4096
 // datatype,5,2
 // tags,region='eu-west-1',datacenter='eu-west-1c',rack='87'
 func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
-	// Tag row first, prefixed with 'time,path'
-	buf1 := make([]byte, 0, defaultBufSize)
-	buf1 = append(buf1, []byte("deviceID,timestamp")...)
-	datatype_buf := make([]byte, 0, defaultBufSize)
-	datatype_buf = append(datatype_buf, []byte("datatype")...)
-	// tags_buf := make([]byte, 0, defaultBufSize)
-	// tags_buf = append(tags_buf, []byte("tags")...)
-	tempBuf := make([]byte, 0, defaultBufSize)
-	var hostname string
-	foundHostname := false
-	tagKeys := p.TagKeys()
-	tagValues := p.TagValues()
-	for i, v := range tagValues {
-		if keyStr := string(tagKeys[i]); keyStr == "hostname" {
-			foundHostname = true
+
+	hostname := "unknown"
+	for i, v := range p.TagValues() {
+		if keyStr := string(p.TagKeys()[i]); keyStr == "hostname" {
 			hostname = v.(string)
 		}
 	}
-	//	else {
-	//		// handle other tags
-	//
-	//		// buf1 = append(buf1, ',')
-	//		// buf1 = append(buf1, tagKeys[i]...)
-	//		// valueInStrByte, datatype := iotdbFormat(v)
-	//		// tempBuf = append(tempBuf, ',')
-	//		// tempBuf = append(tempBuf, valueInStrByte...)
-	//		// datatype_buf = append(datatype_buf, ',')
-	//		// datatype_buf = append(datatype_buf, []byte(fmt.Sprintf("%d", datatype))...)
-	//		valueInStrByte, datatype := IotdbFormat(v)
-	//		if datatype == client.TEXT {
-	//			tagStr := fmt.Sprintf(",%s='%s'", keyStr, string(valueInStrByte))
-	//			tags_buf = append(tags_buf, []byte(tagStr)...)
-	//		} else {
-	//			tagStr := fmt.Sprintf(",%s=", keyStr)
-	//			tags_buf = append(tags_buf, []byte(tagStr)...)
-	//			tags_buf = append(tags_buf, valueInStrByte...)
-	//		}
-	//	}
-	//}
-	if !foundHostname {
-		// Unable to find hostname as part of device id
-		hostname = "unknown"
-	}
-	buf2 := make([]byte, 0, defaultBufSize)
-	buf2 = append(buf2, []byte(fmt.Sprintf("%s.%s.%s,", s.BasicPath, modifyHostname(string(p.MeasurementName())), hostname))...)
-	buf2 = append(buf2, []byte(fmt.Sprintf("%d", p.Timestamp().UTC().UnixNano()))...)
-	buf2 = append(buf2, tempBuf...)
-	// Fields
-	fieldKeys := p.FieldKeys()
+
+	buf := make([]byte, 0, defaultBufSize)
+	buf = append(buf, []byte(fmt.Sprintf("%s.%s.%s,", s.BasicPath, modifyHostname(string(p.MeasurementName())), hostname))...)
+	buf = append(buf, []byte(fmt.Sprintf("%d", p.Timestamp().UTC().UnixNano()))...)
+
 	fieldValues := p.FieldValues()
-	for i, v := range fieldValues {
-		buf1 = append(buf1, ',')
-		buf1 = append(buf1, fieldKeys[i]...)
-		valueInStrByte, datatype := IotdbFormat(v)
-		buf2 = append(buf2, ',')
-		buf2 = append(buf2, valueInStrByte...)
-		datatype_buf = append(datatype_buf, ',')
-		datatype_buf = append(datatype_buf, []byte(fmt.Sprintf("%d", datatype))...)
+	for _, v := range fieldValues {
+		valueInStrByte, _ := IotdbFormat(v)
+		buf = append(buf, ',')
+		buf = append(buf, valueInStrByte...)
 	}
-	buf1 = append(buf1, '\n')
-	buf2 = append(buf2, '\n')
-	datatype_buf = append(datatype_buf, '\n')
-	// tags_buf = append(tags_buf, '\n')
-	_, err := w.Write(buf1)
-	if err == nil {
-		_, err = w.Write(buf2)
-	}
-	if err == nil {
-		_, err = w.Write(datatype_buf)
-	}
-	//if err == nil {
-	//	_, err = w.Write(tags_buf)
-	//}
+
+	buf = append(buf, '\n')
+	_, err := w.Write(buf)
+
 	return err
 }
 
