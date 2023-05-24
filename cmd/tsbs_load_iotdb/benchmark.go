@@ -2,13 +2,14 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"github.com/apache/iotdb-client-go/client"
+	"github.com/spaolacci/murmur3"
 	"github.com/timescale/tsbs/load"
 	"github.com/timescale/tsbs/pkg/data"
 	"github.com/timescale/tsbs/pkg/targets"
 	"github.com/timescale/tsbs/pkg/targets/iotdb"
-	"hash"
-	"hash/fnv"
+	"math"
 )
 
 func newBenchmark(clientConfig client.Config, loaderConfig load.BenchmarkRunnerConfig) targets.Benchmark {
@@ -26,20 +27,29 @@ type iotdbBenchmark struct {
 }
 
 type iotdbIndexer struct {
+	buffer        *bytes.Buffer
 	maxPartitions uint
-	hasher        hash.Hash32
+	hashEndGroups []uint32
+	cache         map[string]uint
 }
 
-func (indexer *iotdbIndexer) GetIndex(item data.LoadedPoint) uint {
+func (i *iotdbIndexer) GetIndex(item data.LoadedPoint) uint {
 	p := item.Data.(*iotdbPoint)
-	value, ok := iotdb.MetricDeviceIdx[p.deviceID]
+	idx, ok := iotdb.MetricDeviceIdx[p.deviceID]
 	if ok {
-		return value
+		return idx
 	}
 
-	idx := getDeviceIdx(p.deviceID, indexer.maxPartitions)
-	iotdb.MetricDeviceIdx[p.deviceID] = idx
-
+	i.buffer.WriteString(p.deviceID)
+	hash := murmur3.Sum32WithSeed(i.buffer.Bytes(), 0x12345678)
+	i.buffer.Reset()
+	for j := 0; j < int(i.maxPartitions); j++ {
+		if hash <= i.hashEndGroups[j] {
+			idx = uint(j)
+			break
+		}
+	}
+	i.cache[p.deviceID] = idx
 	return idx
 }
 
@@ -52,7 +62,20 @@ func (b *iotdbBenchmark) GetBatchFactory() targets.BatchFactory {
 }
 
 func (b *iotdbBenchmark) GetPointIndexer(maxPartitions uint) targets.PointIndexer {
-	return &iotdbIndexer{maxPartitions: maxPartitions, hasher: fnv.New32a()}
+	if maxPartitions > 1 {
+		interval := uint32(math.MaxUint32 / maxPartitions)
+		hashEndGroups := make([]uint32, maxPartitions)
+		for i := 0; i < int(maxPartitions); i++ {
+			if i == int(maxPartitions)-1 {
+				hashEndGroups[i] = math.MaxUint32
+			} else {
+				hashEndGroups[i] = interval*uint32(i+1) - 1
+			}
+		}
+		return &iotdbIndexer{buffer: &bytes.Buffer{}, hashEndGroups: hashEndGroups,
+			maxPartitions: maxPartitions, cache: map[string]uint{}}
+	}
+	return &targets.ConstantIndexer{}
 }
 
 func (b *iotdbBenchmark) GetProcessor() targets.Processor {
@@ -71,7 +94,7 @@ func (b *iotdbBenchmark) GetDBCreator() targets.DBCreator {
 	}
 }
 
-func getDeviceIdx(host string, maxPartitions uint) uint {
+func getDeviceIdx(host string, maxPartitions int) int {
 	return 0
 	//splits := strings.Split(host, ".")
 	//db := splits[len(splits)-2]
