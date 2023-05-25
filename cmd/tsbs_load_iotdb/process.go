@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/timescale/tsbs/pkg/targets/iotdb"
+	"strconv"
 	"strings"
 
 	//"github.com/timescale/tsbs/pkg/data"
@@ -100,42 +101,42 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		// TODO move code
 	}
 
-
 	for device, values := range batch.m {
 		db := strings.Split(device, ".")[0]
-		tablet, err := client.NewTablet("root" + device, iotdb.GlobalMeasurementMap[db], len(values))
+		tablet, err := client.NewTablet("root."+device, iotdb.GlobalTabletSchemaMap[db], len(values))
+		if err != nil {
+			fatal("build tablet error: %s", err)
+		}
 
-		for
+		for rowIdx, value := range values {
+
+			splits := strings.Split(value, ",")
+
+			timestamp, err := strconv.ParseInt(splits[0], 10, 64)
+			if err != nil {
+				fatal("parse timestamp error: %d, %s", timestamp, err)
+			}
+			tablet.SetTimestamp(timestamp, rowIdx)
+
+			dataTypes := iotdb.GlobalDataTypeMap[db]
+			for cIdx, v := range splits[1:] {
+				nv, err := parseDataToInterface(dataTypes[cIdx], v)
+				if err != nil {
+					fatal("parse data value error: %d, %s", v, err)
+				}
+
+				err = tablet.SetValueAt(nv, cIdx, rowIdx)
+				if err != nil {
+					fatal("InsertTablet SetValueAt error: %v", err)
+				}
+			}
+
+			status, err := p.session.InsertTablet(tablet, true)
+			if status.Code != client.SuccessStatus {
+				fatal("InsertTablet meets error for status is not equals Success: %v", status.Code)
+			}
+		}
 	}
-
-	//
-	//// insert records into the database
-	//for index := 0; index < len(batch.points); {
-	//	startIndex := index
-	//	var endIndex int
-	//	if p.recordsMaxRows > 0 {
-	//		endIndex = minInt(len(batch.points), index+p.recordsMaxRows)
-	//	} else {
-	//		endIndex = len(batch.points)
-	//	}
-	//	rcds, tempSqlList := p.pointsToRecords(batch.points[startIndex:endIndex])
-	//
-	//	// using relative API according to "aligned-timeseries" setting
-	//	var err error
-	//	if p.useAlignedTimeseries {
-	//		_, err = p.session.InsertAlignedRecords(
-	//			rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
-	//		)
-	//	} else {
-	//		_, err = p.session.InsertRecords(
-	//			rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps,
-	//		)
-	//	}
-	//	if err != nil {
-	//		fatal("ProcessBatch error:%v", err)
-	//	}
-	//	index = endIndex
-	//}
 
 	metricCount = batch.metricsCnt
 	rowCount = uint64(batch.rowCnt)
@@ -176,29 +177,29 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 //		})
 //}
 
-//// parse datatype and convert string into interface
-//func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, error) {
-//	switch client.TSDataType(datatype) {
-//	case client.BOOLEAN:
-//		value, err := strconv.ParseBool(str)
-//		return interface{}(value), err
-//	case client.INT32:
-//		value, err := strconv.ParseInt(str, 10, 32)
-//		return interface{}(int32(value)), err
-//	case client.INT64:
-//		value, err := strconv.ParseInt(str, 10, 64)
-//		return interface{}(int64(value)), err
-//	case client.FLOAT:
-//		value, err := strconv.ParseFloat(str, 32)
-//		return interface{}(float32(value)), err
-//	case client.DOUBLE:
-//		value, err := strconv.ParseFloat(str, 64)
-//		return interface{}(float64(value)), err
-//	case client.TEXT:
-//		return interface{}(str), nil
-//	case client.UNKNOWN:
-//		return interface{}(nil), fmt.Errorf("datatype client.UNKNOW, value:%s", str)
-//	default:
-//		return interface{}(nil), fmt.Errorf("unknown datatype, value:%s", str)
-//	}
-//}
+// parse datatype and convert string into interface
+func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, error) {
+	switch datatype {
+	case client.BOOLEAN:
+		value, err := strconv.ParseBool(str)
+		return interface{}(value), err
+	case client.INT32:
+		value, err := strconv.ParseInt(str, 10, 32)
+		return interface{}(int32(value)), err
+	case client.INT64:
+		value, err := strconv.ParseInt(str, 10, 64)
+		return interface{}(int64(value)), err
+	case client.FLOAT:
+		value, err := strconv.ParseFloat(str, 32)
+		return interface{}(float32(value)), err
+	case client.DOUBLE:
+		value, err := strconv.ParseFloat(str, 64)
+		return interface{}(float64(value)), err
+	case client.TEXT:
+		return interface{}(str), nil
+	case client.UNKNOWN:
+		return interface{}(nil), fmt.Errorf("datatype client.UNKNOW, value:%s", str)
+	default:
+		return interface{}(nil), fmt.Errorf("unknown datatype, value:%s", str)
+	}
+}
