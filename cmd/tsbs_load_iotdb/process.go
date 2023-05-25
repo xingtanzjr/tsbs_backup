@@ -103,13 +103,13 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 
 	for device, values := range batch.m {
 		db := strings.Split(device, ".")[0]
+		dataTypes := iotdb.GlobalDataTypeMap[db]
 		tablet, err := client.NewTablet("root."+device, iotdb.GlobalTabletSchemaMap[db], len(values))
 		if err != nil {
 			fatal("build tablet error: %s", err)
 		}
 
 		for rowIdx, value := range values {
-
 			splits := strings.Split(value, ",")
 
 			timestamp, err := strconv.ParseInt(splits[0], 10, 64)
@@ -118,7 +118,6 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 			}
 			tablet.SetTimestamp(timestamp, rowIdx)
 
-			dataTypes := iotdb.GlobalDataTypeMap[db]
 			for cIdx, v := range splits[1:] {
 				nv, err := parseDataToInterface(dataTypes[cIdx], v)
 				if err != nil {
@@ -130,11 +129,11 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 					fatal("InsertTablet SetValueAt error: %v", err)
 				}
 			}
+		}
 
-			status, err := p.session.InsertTablet(tablet, true)
-			if status.Code != client.SuccessStatus {
-				fatal("InsertTablet meets error for status is not equals Success: %v", status.Code)
-			}
+		status, err := p.session.InsertTablet(tablet, true)
+		if status.Code != client.SuccessStatus {
+			fatal("InsertTablet meets error for status is not equals Success: %v", status.Code)
 		}
 	}
 
@@ -180,25 +179,12 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 // parse datatype and convert string into interface
 func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, error) {
 	switch datatype {
-	case client.BOOLEAN:
-		value, err := strconv.ParseBool(str)
-		return interface{}(value), err
-	case client.INT32:
-		value, err := strconv.ParseInt(str, 10, 32)
-		return interface{}(int32(value)), err
 	case client.INT64:
 		value, err := strconv.ParseInt(str, 10, 64)
-		return interface{}(int64(value)), err
-	case client.FLOAT:
-		value, err := strconv.ParseFloat(str, 32)
-		return interface{}(float32(value)), err
+		return interface{}(value), err
 	case client.DOUBLE:
 		value, err := strconv.ParseFloat(str, 64)
-		return interface{}(float64(value)), err
-	case client.TEXT:
-		return interface{}(str), nil
-	case client.UNKNOWN:
-		return interface{}(nil), fmt.Errorf("datatype client.UNKNOW, value:%s", str)
+		return interface{}(value), err
 	default:
 		return interface{}(nil), fmt.Errorf("unknown datatype, value:%s", str)
 	}

@@ -30,6 +30,7 @@ var (
 	storeTags            bool   // store tags if set true. Can NOT be used if useAlignedTimeseries is set true.
 	channelCapacity      uint
 	noFlowControl        bool
+	hashWorkers          bool
 )
 
 // Global vars
@@ -72,6 +73,7 @@ func init() {
 	storeTags = viper.GetBool("store-tags")
 	channelCapacity = viper.GetUint("channel-capacity")
 	noFlowControl = !viper.GetBool("flow-control")
+	hashWorkers = viper.GetBool("hash-workers")
 
 	workers := viper.GetUint("workers")
 
@@ -103,8 +105,8 @@ func init() {
 		Password: password,
 	}
 
-	loaderConfig.HashWorkers = true
-	// loaderConfig.NoFlowControl = noFlowControl
+	loaderConfig.HashWorkers = hashWorkers
+	loaderConfig.NoFlowControl = noFlowControl
 	if channelCapacity > 0 {
 		loaderConfig.ChannelCapacity = channelCapacity
 	}

@@ -26,9 +26,9 @@ type iotdbBenchmark struct {
 type iotdbIndexer struct {
 	buffer        *bytes.Buffer
 	maxPartitions uint
-	// hashEndGroups []uint32
-	intervalMap map[string][]int
-	cache       map[string]uint
+	hashEndGroups []uint32
+	intervalMap   map[string][]int
+	cache         map[string]uint
 }
 
 func (i *iotdbIndexer) GetIndex(item data.LoadedPoint) uint {
@@ -129,22 +129,4 @@ func (b *iotdbBenchmark) GetDBCreator() targets.DBCreator {
 	return &dbCreator{
 		loadToSCV: loadToSCV,
 	}
-}
-
-func getDeviceIdx(host string, maxPartitions int) int {
-	return 0
-	//splits := strings.Split(host, ".")
-	//db := splits[len(splits)-2]
-	//device := splits[len(splits)-1]
-	//
-	//idx := 0
-	//for _, s := range device {
-	//	if s == '0' || s == '1' {
-	//		idx = idx * 10 + int(s-'0')
-	//	}
-	//}
-	//
-	//idx := int(iotdb.AllMetrics[db]) * (int)maxPartitions / 9 + idx % 9
-	//
-	//return uint(idx % 9)
 }
