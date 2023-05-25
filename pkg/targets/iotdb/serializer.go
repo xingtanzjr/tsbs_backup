@@ -46,8 +46,8 @@ func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 
 	buf := make([]byte, 0, defaultBufSize)
 	buf = append(buf, []byte(fmt.Sprintf("%s,%s,", modifyHostname(string(p.MeasurementName())), hostname))...)
-	buf = append(buf, []byte(fmt.Sprintf("%d", len(p.FieldValues())))...)
-	buf = append(buf, []byte(fmt.Sprintf("%d,", p.Timestamp().UTC().UnixMilli()))...)
+	buf = append(buf, []byte(fmt.Sprintf("%d,", len(p.FieldValues())))...)
+	buf = append(buf, []byte(fmt.Sprintf("%d", p.Timestamp().UTC().UnixMilli()))...)
 
 	fieldValues := p.FieldValues()
 	for _, v := range fieldValues {

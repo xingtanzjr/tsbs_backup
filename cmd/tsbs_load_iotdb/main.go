@@ -103,9 +103,9 @@ func init() {
 		Password: password,
 	}
 
-	loaderConfig.NoFlowControl = noFlowControl
+	loaderConfig.HashWorkers = true
+	// loaderConfig.NoFlowControl = noFlowControl
 	if channelCapacity > 0 {
-		loaderConfig.HashWorkers = true
 		loaderConfig.ChannelCapacity = channelCapacity
 	}
 

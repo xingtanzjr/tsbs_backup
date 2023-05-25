@@ -12,7 +12,7 @@ GOFMT=$(GOCMD) fmt
 
 all: generators loaders runners
 
-#generators: tsbs_generate_data \
+generators: tsbs_generate_data \
 #			tsbs_generate_queries
 
 loaders: tsbs_load_iotdb
