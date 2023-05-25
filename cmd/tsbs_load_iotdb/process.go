@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/timescale/tsbs/pkg/targets/iotdb"
+	"strings"
+
 	//"github.com/timescale/tsbs/pkg/data"
 	"os"
 	//"strconv"
@@ -97,8 +100,12 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		// TODO move code
 	}
 
-	for device, values := range batch.m {
 
+	for device, values := range batch.m {
+		db := strings.Split(device, ".")[0]
+		tablet, err := client.NewTablet("root" + device, iotdb.GlobalMeasurementMap[db], len(values))
+
+		for
 	}
 
 	//
