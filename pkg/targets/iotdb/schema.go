@@ -20,7 +20,6 @@ var (
 		"postgresl": 7,
 		"redis":     8,
 	}
-	MetricDeviceIdx = make(map[string]uint)
 
 	cpuFields = []string{
 		"usage_user",
