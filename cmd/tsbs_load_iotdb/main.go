@@ -31,6 +31,7 @@ var (
 	channelCapacity      uint
 	noFlowControl        bool
 	hashWorkers          bool
+	batchSize            uint
 )
 
 // Global vars
@@ -74,6 +75,7 @@ func init() {
 	channelCapacity = viper.GetUint("channel-capacity")
 	noFlowControl = !viper.GetBool("flow-control")
 	hashWorkers = viper.GetBool("hash-workers")
+	batchSize = viper.GetUint("batch-size")
 
 	workers := viper.GetUint("workers")
 
@@ -105,6 +107,7 @@ func init() {
 		Password: password,
 	}
 
+	loaderConfig.BatchSize = batchSize
 	loaderConfig.HashWorkers = hashWorkers
 	loaderConfig.NoFlowControl = noFlowControl
 	if channelCapacity > 0 {
