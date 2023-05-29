@@ -33,7 +33,7 @@ type iotdbIndexer struct {
 
 func (i *iotdbIndexer) GetIndex(item data.LoadedPoint) uint {
 	p := item.Data.(*iotdbPoint)
-	idx, ok := i.cache[p.db+p.deviceID]
+	idx, ok := i.cache[p.deviceID]
 	if ok {
 		return idx
 	}
@@ -46,7 +46,7 @@ func (i *iotdbIndexer) GetIndex(item data.LoadedPoint) uint {
 		}
 	}
 	ret := interval[0] + (tmp % 11)
-	i.cache[p.db+p.deviceID] = uint(ret)
+	i.cache[p.deviceID] = uint(ret)
 	return uint(ret)
 }
 

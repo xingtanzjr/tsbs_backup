@@ -14,7 +14,7 @@ import (
 // iotdbPoint is a single record(row) of data
 type iotdbPoint struct {
 	db        string
-	deviceID  string // the deviceID(path) of this record, e.g. "root.cpu.host_0"
+	deviceID  string
 	values    string
 	fieldsCnt int
 }
@@ -48,7 +48,7 @@ func (d *fileDataSource) NextItem() data.LoadedPoint {
 	return data.NewLoadedPoint(
 		&iotdbPoint{
 			db:        lineParts[0],
-			deviceID:  lineParts[1],
+			deviceID:  lineParts[0] + "." + lineParts[1],
 			values:    lineParts[3],
 			fieldsCnt: len(iotdb.GlobalDataTypeMap[lineParts[0]]),
 		})
@@ -56,15 +56,15 @@ func (d *fileDataSource) NextItem() data.LoadedPoint {
 
 func (d *fileDataSource) Headers() *common.GeneratedDataHeaders { return nil }
 
-func (b *iotdbBatch) Len() uint {
-	return b.rowCnt
+func (batch *iotdbBatch) Len() uint {
+	return batch.rowCnt
 }
 
-func (b *iotdbBatch) Append(item data.LoadedPoint) {
+func (batch *iotdbBatch) Append(item data.LoadedPoint) {
 	that := item.Data.(*iotdbPoint)
-	b.rowCnt++
-	b.metricsCnt += uint64(that.fieldsCnt)
-	b.m[that.db+"."+that.deviceID] = append(b.m[that.db+"."+that.deviceID], that.values)
+	batch.rowCnt++
+	batch.metricsCnt += uint64(that.fieldsCnt)
+	batch.m[that.deviceID] = append(batch.m[that.deviceID], that.values)
 }
 
 type factory struct{}
