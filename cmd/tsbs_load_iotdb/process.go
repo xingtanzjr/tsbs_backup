@@ -22,6 +22,7 @@ type processor struct {
 	session                  client.Session
 	recordsMaxRows           int             // max rows of records in 'InsertRecords'
 	ProcessedTagsDeviceIDMap map[string]bool // already processed device ID
+	tabletsMap               map[string]*client.Tablet
 
 	loadToSCV         bool                // if true, do NOT insert into databases, but generate csv files instead.
 	csvFilepathPrefix string              // Prefix of filepath for csv files. Specific a folder or a folder with filename prefix.
@@ -40,6 +41,7 @@ func (p *processor) Init(numWorker int, doLoad, hashWorkers bool) {
 		p.filePtrMap = make(map[string]*os.File)
 	} else {
 		p.ProcessedTagsDeviceIDMap = make(map[string]bool)
+		p.tabletsMap = make(map[string]*client.Tablet)
 		p.session = client.NewSession(&clientConfig)
 		if err := p.session.Open(false, timeoutInMs); err != nil {
 			errMsg := fmt.Sprintf("IoTDB processor init error, session is not open: %v, ", err)
@@ -104,19 +106,27 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 	for device, values := range batch.m {
 		db := strings.Split(device, ".")[0]
 		dataTypes := iotdb.GlobalDataTypeMap[db]
-		tablet, err := client.NewTablet("root."+device, iotdb.GlobalTabletSchemaMap[db], len(values))
-		if err != nil {
-			fatal("build tablet error: %s", err)
-		}
 
-		for rowIdx, value := range values {
+		fullDevice := "root." + device
+		var tablet *client.Tablet
+		tablet, exist := p.tabletsMap[fullDevice]
+		if !exist {
+			tablet, err := client.NewTablet(fullDevice, iotdb.GlobalTabletSchemaMap[db], 1000)
+			p.tabletsMap[fullDevice] = tablet
+			if err != nil {
+				fatal("build tablet error: %s", err)
+			}
+		}
+		tablet = p.tabletsMap[fullDevice]
+
+		for _, value := range values {
 			splits := strings.Split(value, ",")
 
 			timestamp, err := strconv.ParseInt(splits[0], 10, 64)
 			if err != nil {
 				fatal("parse timestamp error: %d, %s", timestamp, err)
 			}
-			tablet.SetTimestamp(timestamp, rowIdx)
+			tablet.SetTimestamp(timestamp, tablet.RowSize)
 
 			for cIdx, v := range splits[1:] {
 				nv, err := parseDataToInterface(dataTypes[cIdx], v)
@@ -124,16 +134,24 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 					fatal("parse data value error: %d, %s", v, err)
 				}
 
-				err = tablet.SetValueAt(nv, cIdx, rowIdx)
+				err = tablet.SetValueAt(nv, cIdx, tablet.RowSize)
 				if err != nil {
 					fatal("InsertTablet SetValueAt error: %v", err)
 				}
 			}
+
+			tablet.RowSize += 1
 		}
 
-		status, err := p.session.InsertTablet(tablet, true)
-		if status.Code != client.SuccessStatus {
-			fatal("InsertTablet meets error for status is not equals Success: %v", status.Code)
+		if tablet.RowSize > 200 {
+			r, err := p.session.InsertAlignedTablet(tablet, true)
+			if err != nil {
+				fatal("InsertTablet meets error: %v", err)
+			}
+			if r.Code != client.SuccessStatus {
+				fatal("InsertTablet meets error for status is not equals Success: %v, %v", r, r.GetMessage())
+			}
+			tablet.Reset()
 		}
 	}
 
@@ -188,4 +206,20 @@ func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, 
 	default:
 		return interface{}(nil), fmt.Errorf("unknown datatype, value:%s", str)
 	}
+}
+
+func (p *processor) Close(_ bool) {
+	for _, tablet := range p.tabletsMap {
+		if tablet.Len() > 0 {
+			r, err := p.session.InsertAlignedTablet(tablet, true)
+			if err != nil {
+				fatal("InsertTablet meets error: %v", err)
+			}
+			if r.Code != client.SuccessStatus {
+				fatal("InsertTablet meets error for status is not equals Success: %v, %v", r, r.GetMessage())
+			}
+			tablet.Reset()
+		}
+	}
+	defer p.session.Close()
 }
