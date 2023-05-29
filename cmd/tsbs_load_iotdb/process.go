@@ -111,7 +111,7 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		var tablet *client.Tablet
 		tablet, exist := p.tabletsMap[fullDevice]
 		if !exist {
-			tablet, err := client.NewTablet(fullDevice, iotdb.GlobalTabletSchemaMap[db], 1000)
+			tablet, err := client.NewTablet(fullDevice, iotdb.GlobalTabletSchemaMap[db], 15)
 			p.tabletsMap[fullDevice] = tablet
 			if err != nil {
 				fatal("build tablet error: %s", err)
@@ -143,7 +143,7 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 			tablet.RowSize += 1
 		}
 
-		if tablet.RowSize > 200 {
+		if tablet.RowSize >= 10 {
 			r, err := p.session.InsertAlignedTablet(tablet, true)
 			if err != nil {
 				fatal("InsertTablet meets error: %v", err)
@@ -157,6 +157,7 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 
 	metricCount = batch.metricsCnt
 	rowCount = uint64(batch.rowCnt)
+	batch.Reset()
 	return metricCount, rowCount
 }
 

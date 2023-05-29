@@ -31,7 +31,7 @@ loaders: tsbs_load_iotdb
 # 		 tsbs_load_questdb \
 #		 tsbs_load_iotdb
 
-#runners: tsbs_run_queries_iotdb
+runners: tsbs_run_queries_iotdb
 
 #runners: tsbs_run_queries_akumuli \
 #		 tsbs_run_queries_cassandra \

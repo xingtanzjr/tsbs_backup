@@ -67,6 +67,12 @@ func (batch *iotdbBatch) Append(item data.LoadedPoint) {
 	batch.m[that.deviceID] = append(batch.m[that.deviceID], that.values)
 }
 
+func (batch *iotdbBatch) Reset() {
+	batch.rowCnt = 0
+	batch.metricsCnt = 0
+	batch.m = map[string][]string{}
+}
+
 type factory struct{}
 
 func (f *factory) New() targets.Batch {
