@@ -5,6 +5,7 @@ import (
 	"github.com/timescale/tsbs/pkg/targets/iotdb"
 	"strconv"
 	"strings"
+	"time"
 
 	//"github.com/timescale/tsbs/pkg/data"
 	"os"
@@ -61,14 +62,6 @@ type records struct {
 	timestamps   []int64
 }
 
-//
-//func minInt(x int, y int) int {
-//	if x < y {
-//		return x
-//	}
-//	return y
-//}
-//
 //func generateCSVContent(point *iotdbPoint) string {
 //	var valueList []string
 //	valueList = append(valueList, strconv.FormatInt(point.timestamp, 10))
@@ -193,43 +186,13 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 
 	metricCount = batch.metricsCnt
 	rowCount = uint64(batch.rowCnt)
+
+	fmt.Printf("processBatch, time: %s, metricCount: %d, rowCount: %d, mSize: %d\n",
+		time.Now().Format("2006-01-02 15:04:05"), metricCount, rowCount, len(batch.m))
+
 	batch.Reset()
 	return metricCount, rowCount
 }
-
-//func parseLine(line string) data.LoadedPoint {
-//	lineParts := strings.Split(line, ",") // deviceID and rest values of fields
-//	deviceID := lineParts[0]
-//	deviceType := strings.Split(deviceID, ".")[2]
-//
-//	dataTypes := iotdb.GlobalDataTypeMap[deviceType]
-//	measurements := iotdb.GlobalMeasurementMap[deviceType]
-//
-//	timestamp, err := strconv.ParseInt(lineParts[1], 10, 64)
-//	if err != nil {
-//		fatal("timestamp convert err: %v", err)
-//	}
-//
-//	timestamp = timestamp / int64(time.Millisecond)
-//
-//	var values []interface{}
-//
-//	for idx := 2; idx < len(lineParts); idx++ {
-//		value, err := parseDataToInterface(dataTypes[idx-2], lineParts[idx])
-//		if err != nil {
-//			panic(fmt.Errorf("iotdb fileDataSource NextItem Parse error:%v", err))
-//		}
-//		values = append(values, value)
-//	}
-//
-//	return data.NewLoadedPoint(
-//		&iotdbPoint{
-//			deviceID:  lineParts[0],
-//			timestamp: timestamp,
-//			values:    values,
-//			fieldsCnt: uint64(len(measurements)),
-//		})
-//}
 
 // parse datatype and convert string into interface
 func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, error) {

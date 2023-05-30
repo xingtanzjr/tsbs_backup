@@ -9,7 +9,7 @@ var (
 	GlobalMeasurementMap  = make(map[string][]string)
 	GlobalDataTypeMap     = make(map[string][]client.TSDataType)
 
-	AllMetrics = map[string]uint{
+	allMetrics = map[string]uint{
 		"cpu":       0,
 		"diskio":    1,
 		"disk":      2,
