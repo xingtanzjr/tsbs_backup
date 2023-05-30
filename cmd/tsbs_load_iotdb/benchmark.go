@@ -14,6 +14,7 @@ func newBenchmark(clientConfig client.Config, loaderConfig load.BenchmarkRunnerC
 		clientConfig:   clientConfig,
 		loaderConfig:   loaderConfig,
 		recordsMaxRows: recordsMaxRows,
+		tabletSize:     tabletSize,
 	}
 }
 
@@ -21,6 +22,7 @@ type iotdbBenchmark struct {
 	clientConfig   client.Config
 	loaderConfig   load.BenchmarkRunnerConfig
 	recordsMaxRows int
+	tabletSize     int
 }
 
 type iotdbIndexer struct {
@@ -118,6 +120,7 @@ func (b *iotdbBenchmark) GetPointIndexer(maxPartitions uint) targets.PointIndexe
 func (b *iotdbBenchmark) GetProcessor() targets.Processor {
 	return &processor{
 		recordsMaxRows:       b.recordsMaxRows,
+		tabletSize:           b.tabletSize,
 		loadToSCV:            loadToSCV,
 		csvFilepathPrefix:    csvFilepathPrefix,
 		useAlignedTimeseries: useAlignedTimeseries,

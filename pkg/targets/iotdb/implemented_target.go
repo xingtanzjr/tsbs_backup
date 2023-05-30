@@ -35,6 +35,7 @@ func (t *iotdbTarget) TargetSpecificFlags(flagPrefix string, flagSet *pflag.Flag
 	//flagSet.Bool(flagPrefix+"hash-workers", false, "Consistently send the same hostnames to the same worker if set true.")
 	flagSet.Int(flagPrefix+"channel-capacity", 0, "Capacity of channel")
 	flagSet.Bool(flagPrefix+"flow-control", true, "Flow Control")
+	flagSet.Int(flagPrefix+"tablet-size", 10, "Tablet Size")
 }
 
 func (t *iotdbTarget) TargetName() string {

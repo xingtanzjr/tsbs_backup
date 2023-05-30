@@ -20,7 +20,8 @@ import (
 type processor struct {
 	numWorker                int // the worker(like thread) ID of this processor
 	session                  client.Session
-	recordsMaxRows           int             // max rows of records in 'InsertRecords'
+	recordsMaxRows           int // max rows of records in 'InsertRecords'
+	tabletSize               int
 	ProcessedTagsDeviceIDMap map[string]bool // already processed device ID
 	tabletsMap               map[string]*client.Tablet
 
@@ -111,7 +112,7 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		var tablet *client.Tablet
 		tablet, exist := p.tabletsMap[fullDevice]
 		if !exist {
-			tablet, err := client.NewTablet(fullDevice, iotdb.GlobalTabletSchemaMap[db], 15)
+			tablet, err := client.NewTablet(fullDevice, iotdb.GlobalTabletSchemaMap[db], p.tabletSize)
 			p.tabletsMap[fullDevice] = tablet
 			if err != nil {
 				fatal("build tablet error: %s", err)
@@ -143,7 +144,7 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 			tablet.RowSize += 1
 		}
 
-		if tablet.RowSize >= 10 {
+		if tablet.RowSize == p.tabletSize {
 			r, err := p.session.InsertAlignedTablet(tablet, true)
 			if err != nil {
 				fatal("InsertTablet meets error: %v", err)

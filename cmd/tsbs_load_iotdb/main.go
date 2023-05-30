@@ -32,6 +32,7 @@ var (
 	noFlowControl        bool
 	hashWorkers          bool
 	batchSize            uint
+	tabletSize           int
 )
 
 // Global vars
@@ -76,6 +77,7 @@ func init() {
 	noFlowControl = !viper.GetBool("flow-control")
 	hashWorkers = viper.GetBool("hash-workers")
 	batchSize = viper.GetUint("batch-size")
+	tabletSize = viper.GetInt("tablet-size")
 
 	workers := viper.GetUint("workers")
 
