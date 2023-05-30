@@ -5,7 +5,7 @@ import (
 	"github.com/timescale/tsbs/pkg/targets/iotdb"
 	"strconv"
 	"strings"
-	"time"
+	//"time"
 
 	//"github.com/timescale/tsbs/pkg/data"
 	"os"
@@ -187,8 +187,8 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 	metricCount = batch.metricsCnt
 	rowCount = uint64(batch.rowCnt)
 
-	fmt.Printf("processBatch, time: %s, metricCount: %d, rowCount: %d, mSize: %d\n",
-		time.Now().Format("2006-01-02 15:04:05"), metricCount, rowCount, len(batch.m))
+	//fmt.Printf("processBatch, time: %s, metricCount: %d, rowCount: %d, mSize: %d\n",
+	//	time.Now().Format("2006-01-02 15:04:05"), metricCount, rowCount, len(batch.m))
 
 	batch.Reset()
 	return metricCount, rowCount
