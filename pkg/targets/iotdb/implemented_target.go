@@ -32,10 +32,9 @@ func (t *iotdbTarget) TargetSpecificFlags(flagPrefix string, flagSet *pflag.Flag
 	flagSet.String(flagPrefix+"csv-prefix", "./", "Prefix of filepath for CSV files. Specific a folder or a folder with filename prefix.")
 	flagSet.Bool(flagPrefix+"aligned-timeseries", true, "Using aligned timeseries for all metrics if set true.")
 	flagSet.Bool(flagPrefix+"store-tags", false, "Store tags if set true. Can NOT be used if aligned-timeseries is set true.")
-	//flagSet.Bool(flagPrefix+"hash-workers", false, "Consistently send the same hostnames to the same worker if set true.")
 	flagSet.Int(flagPrefix+"channel-capacity", 0, "Capacity of channel")
 	flagSet.Bool(flagPrefix+"flow-control", true, "Flow Control")
-	flagSet.Int(flagPrefix+"tablet-size", 10, "Tablet Size")
+	flagSet.Int(flagPrefix+"tablet-size", -1, "Tablet Size")
 }
 
 func (t *iotdbTarget) TargetName() string {

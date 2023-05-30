@@ -30,6 +30,7 @@ type processor struct {
 	filePtrMap        map[string]*os.File // file pointer for each deviceID
 
 	useAlignedTimeseries bool // using aligned timeseries if set true.
+	useInsertRecords     bool
 	storeTags            bool // store tags if set true. Can NOT be used if useAlignedTimeseries is set true.
 }
 
@@ -60,19 +61,6 @@ type records struct {
 	timestamps   []int64
 }
 
-//func (p *processor) pointsToRecords(points []*iotdbPoint) (records, []string) {
-//	var rcds records
-//	// var sqlList []string = nil
-//	for _, row := range points {
-//		rcds.deviceIds = append(rcds.deviceIds, row.deviceID)
-//		rcds.measurements = append(rcds.measurements, row.measurements)
-//		//rcds.dataTypes = append(rcds.dataTypes, row.dataTypes)
-//		rcds.values = append(rcds.values, row.values)
-//		rcds.timestamps = append(rcds.timestamps, row.timestamp)
-//	}
-//	return rcds, nil
-//}
-
 //
 //func minInt(x int, y int) int {
 //	if x < y {
@@ -102,6 +90,53 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 
 	if !p.loadToSCV {
 		// TODO move code
+	}
+
+	// using `insertRecords` API
+	if p.tabletSize <= 0 {
+		var rcds records
+		for device, values := range batch.m {
+
+			db := strings.Split(device, ".")[0]
+
+			for _, value := range values {
+
+				rcds.deviceIds = append(rcds.deviceIds, device)
+				rcds.measurements = append(rcds.measurements, iotdb.GlobalMeasurementMap[db])
+
+				splits := strings.Split(value, ",")
+
+				timestamp, err := strconv.ParseInt(splits[0], 10, 64)
+				if err != nil {
+					fatal("parse timestamp error: %d, %s", timestamp, err)
+				}
+				rcds.timestamps = append(rcds.timestamps, timestamp)
+
+				dataTypes := iotdb.GlobalDataTypeMap[db]
+				var valueList []interface{}
+				for cIdx, v := range splits[1:] {
+					nv, err := parseDataToInterface(dataTypes[cIdx], v)
+					if err != nil {
+						fatal("parse data value error: %d, %s", v, err)
+					}
+					valueList = append(valueList, nv)
+				}
+				rcds.dataTypes = append(rcds.dataTypes, dataTypes)
+				rcds.values = append(rcds.values, valueList)
+			}
+		}
+		s, err := p.session.InsertAlignedRecords(rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps)
+		if err != nil {
+			fatal("Invoking InsertAlignedRecords meets error: %v", err)
+		}
+		if s.Code != client.SuccessStatus {
+			fatal("Invoking InsertAlignedRecords returns failure status, code: %v, message: %v", s.Code, s.GetMessage())
+		}
+
+		metricCount = batch.metricsCnt
+		rowCount = uint64(batch.rowCnt)
+		batch.Reset()
+		return metricCount, rowCount
 	}
 
 	for device, values := range batch.m {
