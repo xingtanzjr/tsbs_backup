@@ -134,8 +134,6 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		return metricCount, rowCount
 	}
 
-	metricCount = 0
-	rowCount = 0
 	for device, values := range batch.m {
 		db := strings.Split(device, ".")[0]
 		dataTypes := iotdb.GlobalDataTypeMap[db]
@@ -184,16 +182,13 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 			if r.Code != client.SuccessStatus {
 				fatal("InsertTablet meets error for status is not equals Success: %v, %v", r, r.GetMessage())
 			}
-			rowCount += uint64(tablet.RowSize)
-			metricCount += uint64(tablet.RowSize * len(dataTypes))
 
 			tablet.Reset()
 		}
 	}
 
-	//fmt.Printf("processBatch, time: %s, metricCount: %d, rowCount: %d, mSize: %d\n",
-	//	time.Now().Format("2006-01-02 15:04:05"), metricCount, rowCount, len(batch.m))
-
+	metricCount = batch.metricsCnt
+	rowCount = uint64(batch.rowCnt)
 	batch.Reset()
 	return metricCount, rowCount
 }
