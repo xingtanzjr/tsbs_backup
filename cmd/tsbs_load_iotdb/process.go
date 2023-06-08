@@ -174,7 +174,7 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 			tablet.RowSize += 1
 		}
 
-		if tablet.RowSize == p.tabletSize {
+		if tablet.RowSize >= p.tabletSize {
 			r, err := p.session.InsertAlignedTablet(tablet, true)
 			if err != nil {
 				fatal("InsertTablet meets error: %v", err)
