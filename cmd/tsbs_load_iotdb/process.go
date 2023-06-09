@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/apache/iotdb-client-go/common"
 	"github.com/timescale/tsbs/pkg/targets/iotdb"
 	"strconv"
 	"strings"
@@ -120,7 +121,15 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 				rcds.values = append(rcds.values, valueList)
 			}
 		}
-		s, err := p.session.InsertAlignedRecords(rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps)
+
+		var s *common.TSStatus
+		var err error
+		if p.useAlignedTimeseries {
+			s, err = p.session.InsertAlignedRecords(rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps)
+		} else {
+			s, err = p.session.InsertRecords(rcds.deviceIds, rcds.measurements, rcds.dataTypes, rcds.values, rcds.timestamps)
+		}
+
 		if err != nil {
 			fatal("Invoking InsertAlignedRecords meets error: %v", err)
 		}
@@ -175,7 +184,13 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		}
 
 		if tablet.RowSize >= p.tabletSize {
-			r, err := p.session.InsertAlignedTablet(tablet, true)
+			var r *common.TSStatus
+			var err error
+			if p.useAlignedTimeseries {
+				r, err = p.session.InsertAlignedTablet(tablet, true)
+			} else {
+				r, err = p.session.InsertTablet(tablet, true)
+			}
 			if err != nil {
 				fatal("InsertTablet meets error: %v", err)
 			}
@@ -210,7 +225,13 @@ func parseDataToInterface(datatype client.TSDataType, str string) (interface{}, 
 func (p *processor) Close(_ bool) {
 	for _, tablet := range p.tabletsMap {
 		if tablet.Len() > 0 {
-			r, err := p.session.InsertAlignedTablet(tablet, true)
+			var r *common.TSStatus
+			var err error
+			if p.useAlignedTimeseries {
+				r, err = p.session.InsertAlignedTablet(tablet, true)
+			} else {
+				r, err = p.session.InsertTablet(tablet, true)
+			}
 			if err != nil {
 				fatal("InsertTablet meets error: %v", err)
 			}
