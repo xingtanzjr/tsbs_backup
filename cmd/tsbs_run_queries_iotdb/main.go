@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/apache/iotdb-client-go/common"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/blagojts/viper"
@@ -16,8 +17,10 @@ import (
 
 // database option vars
 var (
-	clientConfig client.Config
-	timeoutInMs  int64 // 0 for no timeout
+	clientConfig    client.Config
+	timeoutInMs     int64 // 0 for no timeout
+	usingGroupByApi bool  // if using group by api when executing query
+	singleDatabase  bool  // if using single database, e.g. only one database: root.db. root.db.cpu, root.db.mem belongs to this databse
 )
 
 // Global vars:
@@ -34,6 +37,8 @@ func init() {
 	pflag.String("port", "6667", "Which port to connect to on the database host")
 	pflag.String("user", "root", "The user who connect to IoTDB")
 	pflag.String("password", "root", "The password for user connecting to IoTDB")
+	pflag.Bool("use-groupby", false, "Whether to use group by api")
+	pflag.Bool("single-database", false, "Whether to use single database")
 
 	pflag.Parse()
 
@@ -52,7 +57,9 @@ func init() {
 	user := viper.GetString("user")
 	password := viper.GetString("password")
 	workers := viper.GetUint("workers")
-	timeoutInMs = 0 // 0 for no timeout
+	usingGroupByApi = viper.GetBool("use-groupby")
+	singleDatabase = viper.GetBool("single-database")
+	timeoutInMs = 0
 
 	log.Printf("tsbs_run_queries_iotdb target: %s:%s. Loading with %d workers.\n", host, port, workers)
 	if workers < 5 {
@@ -76,6 +83,7 @@ func main() {
 type processor struct {
 	session        client.Session
 	printResponses bool
+	groupByQuery   bool
 }
 
 func newProcessor() query.Processor { return &processor{} }
@@ -100,22 +108,32 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	var dataSet *client.SessionDataSet
 	var legalNodes = true
 	var err error
-	// fmt.Printf("aggregatePaths: %s, startTime: %s, endTime: %s\n", aggregatePaths, iotdbQ.StartTime.Format("2006-01-02 15:04:05"), iotdbQ.EndTime.Format("2006-01-02 15:04:05"))
 
 	start := time.Now().UnixNano()
 	if startTimeInMills > 0 {
-		dataSet, err = p.session.ExecuteAggregationQueryWithLegalNodes(aggregatePaths,
-			[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
-			&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs, &legalNodes)
+		if usingGroupByApi {
+			splits := strings.Split(aggregatePaths[0], ".")
+			db := splits[0] + "." + splits[1]
+			device := strings.Join(splits[:len(splits)-1], ".")
+			measurement := splits[len(splits)-1]
+			fmt.Println(db, device, measurement)
+			dataSet, err = p.session.ExecuteGroupByQueryIntervalQuery(&db, device, measurement,
+				common.TAggregationType_MAX_VALUE, 2,
+				&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs)
+		} else {
+			dataSet, err = p.session.ExecuteAggregationQueryWithLegalNodes(aggregatePaths,
+				[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
+				&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs, &legalNodes)
+		}
 	} else {
-		// 0 for no timeout
 		dataSet, err = p.session.ExecuteQueryStatement(sql, &timeoutInMs)
 	}
 
 	if err == nil {
 		if p.printResponses {
 			if startTimeInMills > 0 {
-				sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)", iotdbQ.AggregatePaths, iotdbQ.StartTime, iotdbQ.EndTime, interval)
+				sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)",
+					iotdbQ.AggregatePaths, iotdbQ.StartTime, iotdbQ.EndTime, interval)
 			}
 			printDataSet(sql, dataSet)
 		} else {
@@ -131,7 +149,8 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 
 	if err != nil {
 		if startTimeInMills > 0 {
-			sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%s, %s), %d)", iotdbQ.SqlQuery, iotdbQ.StartTime, iotdbQ.EndTime, interval)
+			sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)",
+				iotdbQ.SqlQuery, iotdbQ.StartTime, iotdbQ.EndTime, interval)
 		}
 		log.Printf("An error occurred while executing query SQL: %s\n", sql)
 		return nil, err

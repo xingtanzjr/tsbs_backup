@@ -11,8 +11,8 @@ import (
 
 func NewTarget() targets.ImplementedTarget {
 	return &iotdbTarget{
-		BasicPath:      "root.sg",
-		BasicPathLevel: 1,
+		BasicPath:      "root",
+		BasicPathLevel: 0,
 	}
 }
 

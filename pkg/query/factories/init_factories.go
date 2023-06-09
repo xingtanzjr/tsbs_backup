@@ -41,8 +41,8 @@ func InitQueryFactories(config *config.QueryGeneratorConfig) map[string]interfac
 	}
 	factories[constants.FormatQuestDB] = &questdb.BaseGenerator{}
 	factories[constants.FormatIoTDB] = &iotdb.BaseGenerator{
-		BasicPath:      "root.sg",
-		BasicPathLevel: 1,
+		BasicPath:      "root",
+		BasicPathLevel: 0,
 	}
 	return factories
 }
