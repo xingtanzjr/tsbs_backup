@@ -20,23 +20,21 @@ type Serializer struct {
 
 const defaultBufSize = 4096
 
+var hostNameMap = make(map[string]bool)
+
 // Serialize writes Point p to the given Writer w, so it can be
 // loaded by the IoTDB loader. The format is CSV with two lines per Point,
 // with the first row being the names of fields and the second row being the
 // field values.
 //
 // e.g.,
-// deviceID,timestamp,<fieldName1>,<fieldName2>,<fieldName3>,...
-// <deviceID>,<timestamp>,<field1>,<field2>,<field3>,...
-// datatype,<datatype1>,<datatype2>,<datatype3>,...
-// tags,<tagName1>=<tagValue1>,<tagName2>=<tagValue2>,...
+// 0,<deviceID>,<tagName1>=<tagValue1>,<tagName2>=<tagValue2>,...
+// 1,<deviceID>,<timestamp>,<field1>,<field2>,<field3>,...
 //
-// deviceID,timestamp,hostname,value
-// root.cpu.host_1,1451606400000000000,'host_1',44.0
-// datatype,5,2
-// tags,region='eu-west-1',datacenter='eu-west-1c',rack='87'
+// 0,root.cpu.host_1,region='eu-west-1',datacenter='eu-west-1c',rack='87'
+// 1,root.cpu.host_1,1451606400000000000,1,44.0
 func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
-
+	buf := make([]byte, 0, defaultBufSize)
 	hostname := "unknown"
 	for i, v := range p.TagValues() {
 		if keyStr := string(p.TagKeys()[i]); keyStr == "hostname" {
@@ -44,9 +42,27 @@ func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 		}
 	}
 
-	buf := make([]byte, 0, defaultBufSize)
-	buf = append(buf, []byte(fmt.Sprintf("%s,%s,", modifyHostname(string(p.MeasurementName())), hostname))...)
-	buf = append(buf, []byte(fmt.Sprintf("%d,", len(p.FieldValues())))...)
+	exist, _ := hostNameMap[string(p.MeasurementName())+"."+hostname]
+	if !exist {
+		hostNameMap[string(p.MeasurementName())+"."+hostname] = true
+		buf = append(buf, []byte(fmt.Sprintf("0,%s,%s,tag", p.MeasurementName(), hostname))...)
+		for i, v := range p.TagValues() {
+			keyStr := p.TagKeys()[i]
+			valueInStrByte, datatype := IotdbFormat(v)
+			if datatype == client.TEXT {
+				tagStr := fmt.Sprintf(",'%s'='%s'", keyStr, string(valueInStrByte))
+				buf = append(buf, []byte(tagStr)...)
+			} else {
+				tagStr := fmt.Sprintf(",%s=", keyStr)
+				buf = append(buf, []byte(tagStr)...)
+				buf = append(buf, valueInStrByte...)
+			}
+		}
+		buf = append(buf, '\n')
+	}
+
+	buf = append(buf, []byte(fmt.Sprintf("1,%s,%s,", modifyHostname(string(p.MeasurementName())), hostname))...)
+	// buf = append(buf, []byte(fmt.Sprintf("%d,", len(p.FieldValues())))...)
 	buf = append(buf, []byte(fmt.Sprintf("%d", p.Timestamp().UTC().UnixMilli()))...)
 
 	fieldValues := p.FieldValues()
@@ -71,7 +87,6 @@ func modifyHostname(hostname string) string {
 			// not modified yet
 			hostname = "`" + hostname + "`"
 		}
-
 	}
 	return hostname
 }

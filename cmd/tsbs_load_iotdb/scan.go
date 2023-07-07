@@ -44,14 +44,23 @@ func (d *fileDataSource) NextItem() data.LoadedPoint {
 
 	// deviceID and rest values of fields
 	lineParts := strings.SplitN(line, ",", 4)
-
-	return data.NewLoadedPoint(
-		&iotdbPoint{
-			db:        lineParts[0],
-			deviceID:  lineParts[0] + "." + lineParts[1],
-			values:    lineParts[3],
-			fieldsCnt: len(iotdb.GlobalDataTypeMap[lineParts[0]]),
-		})
+	opType := lineParts[0]
+	if opType == "0" {
+		return data.NewLoadedPoint(
+			&iotdbPoint{
+				db:       lineParts[1],
+				deviceID: lineParts[1] + "." + lineParts[2],
+				values:   lineParts[3],
+			})
+	} else {
+		return data.NewLoadedPoint(
+			&iotdbPoint{
+				db:        lineParts[1],
+				deviceID:  lineParts[1] + "." + lineParts[2],
+				values:    lineParts[3],
+				fieldsCnt: len(iotdb.GlobalDataTypeMap[lineParts[1]]),
+			})
+	}
 }
 
 func (d *fileDataSource) Headers() *common.GeneratedDataHeaders { return nil }

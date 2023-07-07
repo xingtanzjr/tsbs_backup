@@ -63,18 +63,6 @@ type records struct {
 	timestamps   []int64
 }
 
-//func generateCSVContent(point *iotdbPoint) string {
-//	var valueList []string
-//	valueList = append(valueList, strconv.FormatInt(point.timestamp, 10))
-//	for _, value := range point.values {
-//		valueInStrByte, _ := iotdb.IotdbFormat(value)
-//		valueList = append(valueList, string(valueInStrByte))
-//	}
-//	content := strings.Join(valueList, ",")
-//	content += "\n"
-//	return content
-//}
-
 func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, rowCount uint64) {
 	batch := b.(*iotdbBatch)
 
@@ -82,8 +70,9 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		return batch.metricsCnt, uint64(batch.rowCnt)
 	}
 
-	if !p.loadToSCV {
-		// TODO move code
+	if p.loadToSCV {
+		// TODO add load csv impl
+		return 0, 0
 	}
 
 	// using `insertRecords` API
@@ -161,17 +150,33 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 
 		for _, value := range values {
 			splits := strings.Split(value, ",")
+			if splits[0] == "tag" {
+				kvString := splits[1]
+				for i, kv := range splits {
+					if i > 1 {
+						kvString = kvString + "," + kv
+					}
+				}
+				sql := fmt.Sprintf("CREATE ALIGNED TIMESERIES %s(_tags INT32 tags(%s)) ", fullDevice, kvString)
+				fmt.Println("===== create timeseries SQL:" + sql)
+				_, err := p.session.ExecuteStatement(sql)
+				if err != nil {
+					fatal("ExecuteStatement CREATE timeseries with tags error: %v", err)
+				}
+				continue
+			}
 
 			timestamp, err := strconv.ParseInt(splits[0], 10, 64)
 			if err != nil {
 				fatal("parse timestamp error: %d, %s", timestamp, err)
 			}
+
 			tablet.SetTimestamp(timestamp, tablet.RowSize)
 
 			for cIdx, v := range splits[1:] {
 				nv, err := parseDataToInterface(dataTypes[cIdx], v)
 				if err != nil {
-					fatal("parse data value error: %d, %s", v, err)
+					fatal("Parse data value error: %d, %s", v, err)
 				}
 
 				err = tablet.SetValueAt(nv, cIdx, tablet.RowSize)

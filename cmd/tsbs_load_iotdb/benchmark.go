@@ -97,7 +97,7 @@ func (b *iotdbBenchmark) GetBatchFactory() targets.BatchFactory {
 //	return &targets.ConstantIndexer{}
 //}
 
-// GetPointIndexer only user for 100 workers
+// GetPointIndexer only used for 100 workers
 func (b *iotdbBenchmark) GetPointIndexer(maxPartitions uint) targets.PointIndexer {
 	if maxPartitions > 1 {
 		m := map[string][]int{
