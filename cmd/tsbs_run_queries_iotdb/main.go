@@ -125,6 +125,14 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 					db, device, measurement, &startTimeInMills, &endTimeInMills)
 				return nil, err
 			}
+
+			if err == nil {
+				if p.printResponses {
+					sql = fmt.Sprintf("ExecuteGroupByQueryIntervalQuery meets error, db: %s, device: %s, measurement: %s, startTime: %d, endTime: %d",
+						db, device, measurement, &startTimeInMills, &endTimeInMills)
+					printDataSet(sql, dataSet)
+				}
+			}
 		} else {
 			dataSet, err = p.session.ExecuteAggregationQueryWithLegalNodes(aggregatePaths,
 				[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
@@ -135,33 +143,32 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 					aggregatePaths, &startTimeInMills, &endTimeInMills)
 				return nil, err
 			}
+
+			if err == nil {
+				if p.printResponses {
+					sql = fmt.Sprintf("ExecuteAggregationQueryWithLegalNodes meets error, aggregatePaths: %s, startTime: %d, endTime: %d\n",
+						aggregatePaths, &startTimeInMills, &endTimeInMills)
+					printDataSet(sql, dataSet)
+				}
+			}
 		}
 	} else {
 		dataSet, err = p.session.ExecuteQueryStatement(sql, &timeoutInMs)
 	}
 
+	if err != nil {
+		log.Printf("An error occurred while executing query SQL: %s\n", iotdbQ.SqlQuery)
+		return nil, err
+	}
+
 	if err == nil {
 		if p.printResponses {
-			if startTimeInMills > 0 {
-				sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)",
-					iotdbQ.AggregatePaths, iotdbQ.StartTime, iotdbQ.EndTime, interval)
-			}
-			printDataSet(sql, dataSet)
-		} else {
-			// var next bool
-			// for next, err = dataSet.Next(); err == nil && next; next, err = dataSet.Next() {
-			// 	// Traverse query results
-			// }
+			printDataSet(string(iotdbQ.SqlQuery), dataSet)
 		}
 	}
 	took := time.Now().UnixNano() - start
 
 	defer dataSet.Close()
-
-	if err != nil {
-		log.Printf("An error occurred while executing query SQL: %s\n", iotdbQ.SqlQuery)
-		return nil, err
-	}
 
 	lag := float64(took) / float64(time.Millisecond) // in milliseconds
 	stat := query.GetStat()
