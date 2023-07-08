@@ -119,10 +119,22 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 			dataSet, err = p.session.ExecuteGroupByQueryIntervalQuery(&db, device, measurement,
 				common.TAggregationType_MAX_VALUE, 2,
 				&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs)
+
+			if err != nil {
+				fmt.Printf("ExecuteGroupByQueryIntervalQuery meets error, db: %s, device: %s, measurement: %s, startTime: %d, endTime: %d\n",
+					db, device, measurement, &startTimeInMills, &endTimeInMills)
+				return nil, err
+			}
 		} else {
 			dataSet, err = p.session.ExecuteAggregationQueryWithLegalNodes(aggregatePaths,
 				[]common.TAggregationType{common.TAggregationType_MAX_VALUE},
 				&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs, &legalNodes)
+
+			if err != nil {
+				fmt.Printf("ExecuteAggregationQueryWithLegalNodes meets error, aggregatePaths: %s, startTime: %d, endTime: %d\n",
+					aggregatePaths, &startTimeInMills, &endTimeInMills)
+				return nil, err
+			}
 		}
 	} else {
 		dataSet, err = p.session.ExecuteQueryStatement(sql, &timeoutInMs)
@@ -147,11 +159,7 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 	defer dataSet.Close()
 
 	if err != nil {
-		if startTimeInMills > 0 {
-			sql = fmt.Sprintf("SELECT MAX_VALUE(%s) GROUP BY ([%d, %d), %d)",
-				iotdbQ.SqlQuery, iotdbQ.StartTime, iotdbQ.EndTime, interval)
-		}
-		log.Printf("An error occurred while executing query SQL: %s\n", sql)
+		log.Printf("An error occurred while executing query SQL: %s\n", iotdbQ.SqlQuery)
 		return nil, err
 	}
 
