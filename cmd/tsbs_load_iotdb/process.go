@@ -84,22 +84,35 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 			fullDevice := "root." + device
 
 			for _, value := range values {
+				splits := strings.Split(value, ",")
+				if splits[0] == "tag" {
+					kvString := splits[1]
+					for i, kv := range splits {
+						if i > 1 {
+							kvString = kvString + "," + kv
+						}
+					}
+					sql := fmt.Sprintf("CREATE ALIGNED TIMESERIES %s(_tags INT32 tags(%s)) ", fullDevice, kvString)
+					_, err := p.session.ExecuteStatement(sql)
+					if err != nil {
+						fatal("ExecuteStatement CREATE timeseries with tags error: %v", err)
+					}
+					continue
+				}
 
 				rcds.deviceIds = append(rcds.deviceIds, fullDevice)
 				rcds.measurements = append(rcds.measurements, iotdb.GlobalMeasurementMap[db])
 				dataTypes := iotdb.GlobalDataTypeMap[db]
 				rcds.dataTypes = append(rcds.dataTypes, dataTypes)
 
-				splits := strings.Split(value, ",")
-
-				timestamp, err := strconv.ParseInt(splits[0], 10, 64)
+				timestamp, err := strconv.ParseInt(splits[1], 10, 64)
 				if err != nil {
 					fatal("parse timestamp error: %d, %s", timestamp, err)
 				}
 				rcds.timestamps = append(rcds.timestamps, timestamp)
 
 				var valueList []interface{}
-				for cIdx, v := range splits[1:] {
+				for cIdx, v := range splits[2:] {
 					nv, err := parseDataToInterface(dataTypes[cIdx], v)
 					if err != nil {
 						fatal("parse data value error: %d, %s", v, err)
@@ -158,7 +171,6 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 					}
 				}
 				sql := fmt.Sprintf("CREATE ALIGNED TIMESERIES %s(_tags INT32 tags(%s)) ", fullDevice, kvString)
-				fmt.Println("===== create timeseries SQL:" + sql)
 				_, err := p.session.ExecuteStatement(sql)
 				if err != nil {
 					fatal("ExecuteStatement CREATE timeseries with tags error: %v", err)
