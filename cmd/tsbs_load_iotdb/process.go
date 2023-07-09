@@ -105,14 +105,14 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 				dataTypes := iotdb.GlobalDataTypeMap[db]
 				rcds.dataTypes = append(rcds.dataTypes, dataTypes)
 
-				timestamp, err := strconv.ParseInt(splits[1], 10, 64)
+				timestamp, err := strconv.ParseInt(splits[0], 10, 64)
 				if err != nil {
 					fatal("parse timestamp error: %d, %s", timestamp, err)
 				}
 				rcds.timestamps = append(rcds.timestamps, timestamp)
 
 				var valueList []interface{}
-				for cIdx, v := range splits[2:] {
+				for cIdx, v := range splits[1:] {
 					nv, err := parseDataToInterface(dataTypes[cIdx], v)
 					if err != nil {
 						fatal("parse data value error: %d, %s", v, err)
