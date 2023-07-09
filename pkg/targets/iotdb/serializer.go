@@ -16,23 +16,10 @@ type Serializer struct {
 	BasicPathLevel int32  // e.g. 0 for "root", 1 for "root.device"
 }
 
-// const iotdbTimeFmt = "2006-01-02 15:04:05"
-
 const defaultBufSize = 4096
 
 var hostNameMap = make(map[string]bool)
 
-// Serialize writes Point p to the given Writer w, so it can be
-// loaded by the IoTDB loader. The format is CSV with two lines per Point,
-// with the first row being the names of fields and the second row being the
-// field values.
-//
-// e.g.,
-// 0,<deviceID>,<tagName1>=<tagValue1>,<tagName2>=<tagValue2>,...
-// 1,<deviceID>,<timestamp>,<field1>,<field2>,<field3>,...
-//
-// 0,root.cpu.host_1,region='eu-west-1',datacenter='eu-west-1c',rack='87'
-// 1,root.cpu.host_1,1451606400000000000,1,44.0
 func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 	buf := make([]byte, 0, defaultBufSize)
 	hostname := "unknown"
@@ -62,7 +49,6 @@ func (s *Serializer) Serialize(p *data.Point, w io.Writer) error {
 	}
 
 	buf = append(buf, []byte(fmt.Sprintf("1,%s,%s,", modifyHostname(string(p.MeasurementName())), hostname))...)
-	// buf = append(buf, []byte(fmt.Sprintf("%d,", len(p.FieldValues())))...)
 	buf = append(buf, []byte(fmt.Sprintf("%d", p.Timestamp().UTC().UnixMilli()))...)
 
 	fieldValues := p.FieldValues()
@@ -93,25 +79,18 @@ func modifyHostname(hostname string) string {
 
 // Utility function for appending various data types to a byte string
 func IotdbFormat(v interface{}) ([]byte, client.TSDataType) {
-	// treat all integer as int32
 	switch v.(type) {
 	case uint:
-		// return []byte(strconv.FormatInt(int64(v.(uint)), 10)), client.INT32
 		return []byte(strconv.FormatInt(int64(v.(uint)), 10)), client.INT64
 	case uint32:
-		// return []byte(strconv.FormatInt(int64(v.(uint32)), 10)), client.INT32
 		return []byte(strconv.FormatInt(int64(v.(uint32)), 10)), client.INT64
 	case uint64:
-		// return []byte(strconv.FormatInt(int64(v.(uint64)), 10)), client.INT32
 		return []byte(strconv.FormatInt(int64(v.(uint64)), 10)), client.INT64
 	case int:
-		// return []byte(strconv.FormatInt(int64(v.(int)), 10)), client.INT32
 		return []byte(strconv.FormatInt(int64(v.(int)), 10)), client.INT64
 	case int32:
-		// return []byte(strconv.FormatInt(int64(v.(int32)), 10)), client.INT32
 		return []byte(strconv.FormatInt(int64(v.(int32)), 10)), client.INT32
 	case int64:
-		// return []byte(strconv.FormatInt(int64(v.(int64)), 10)), client.INT32
 		return []byte(strconv.FormatInt(int64(v.(int64)), 10)), client.INT64
 	case float64:
 		// Why -1 ?

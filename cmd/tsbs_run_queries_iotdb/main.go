@@ -121,15 +121,17 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 				&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs)
 
 			if err != nil {
-				fmt.Printf("ExecuteGroupByQueryIntervalQuery meets error, db: %s, device: %s, measurement: %s, startTime: %d, endTime: %d\n",
-					db, device, measurement, &startTimeInMills, &endTimeInMills)
+				fmt.Printf("ExecuteGroupByQueryIntervalQuery meets error, "+
+					"db: %s, device: %s, measurement: %s, startTime: %d, endTime: %d\n",
+					db, device, measurement, startTimeInMills, endTimeInMills)
 				return nil, err
 			}
 
 			if err == nil {
 				if p.printResponses {
-					sql = fmt.Sprintf("ExecuteGroupByQueryIntervalQuery meets error, db: %s, device: %s, measurement: %s, startTime: %d, endTime: %d",
-						db, device, measurement, &startTimeInMills, &endTimeInMills)
+					sql = fmt.Sprintf("Response for ExecuteGroupByQueryIntervalQuery, "+
+						"db: %s, device: %s, measurement: %s, startTime: %d, endTime: %d",
+						db, device, measurement, startTimeInMills, endTimeInMills)
 					printDataSet(sql, dataSet)
 				}
 			}
@@ -139,14 +141,16 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 				&startTimeInMills, &endTimeInMills, &interval, &timeoutInMs, &legalNodes)
 
 			if err != nil {
-				fmt.Printf("ExecuteAggregationQueryWithLegalNodes meets error, aggregatePaths: %s, startTime: %d, endTime: %d\n",
+				fmt.Printf("ExecuteAggregationQueryWithLegalNodes meets error, "+
+					"aggregatePaths: %s, startTime: %d, endTime: %d\n",
 					aggregatePaths, &startTimeInMills, &endTimeInMills)
 				return nil, err
 			}
 
 			if err == nil {
 				if p.printResponses {
-					sql = fmt.Sprintf("ExecuteAggregationQueryWithLegalNodes meets error, aggregatePaths: %s, startTime: %d, endTime: %d\n",
+					sql = fmt.Sprintf("Response for ExecuteAggregationQueryWithLegalNodes, "+
+						"aggregatePaths: %s, startTime: %d, endTime: %d\n",
 						aggregatePaths, &startTimeInMills, &endTimeInMills)
 					printDataSet(sql, dataSet)
 				}
