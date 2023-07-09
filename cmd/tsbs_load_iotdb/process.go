@@ -133,10 +133,10 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 		}
 
 		if err != nil {
-			fatal("Invoking InsertAlignedRecords meets error: %v", err)
+			fatal("Invoking Insert Records API meets error: %v", err)
 		}
 		if s.Code != client.SuccessStatus {
-			fatal("Invoking InsertAlignedRecords returns failure status, code: %v, message: %v", s.Code, s.GetMessage())
+			fatal("Invoking Insert Records API returns failure status, code: %v, message: %v", s.Code, s.GetMessage())
 		}
 
 		metricCount = batch.metricsCnt
@@ -198,24 +198,24 @@ func (p *processor) ProcessBatch(b targets.Batch, doLoad bool) (metricCount, row
 			}
 
 			tablet.RowSize += 1
-		}
 
-		if tablet.RowSize >= p.tabletSize {
-			var r *common.TSStatus
-			var err error
-			if p.useAlignedTimeseries {
-				r, err = p.session.InsertAlignedTablet(tablet, true)
-			} else {
-				r, err = p.session.InsertTablet(tablet, true)
-			}
-			if err != nil {
-				fatal("InsertTablet meets error: %v", err)
-			}
-			if r.Code != client.SuccessStatus {
-				fatal("InsertTablet meets error for status is not equals Success: %v, %v", r, r.GetMessage())
-			}
+			if tablet.RowSize >= p.tabletSize {
+				var r *common.TSStatus
+				var err error
+				if p.useAlignedTimeseries {
+					r, err = p.session.InsertAlignedTablet(tablet, true)
+				} else {
+					r, err = p.session.InsertTablet(tablet, true)
+				}
+				if err != nil {
+					fatal("InsertTablet meets error: %v", err)
+				}
+				if r.Code != client.SuccessStatus {
+					fatal("InsertTablet meets error for status is not equals Success: %v, %v", r, r.GetMessage())
+				}
 
-			tablet.Reset()
+				tablet.Reset()
+			}
 		}
 	}
 
