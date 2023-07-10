@@ -143,7 +143,7 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 			if err != nil {
 				fmt.Printf("ExecuteAggregationQueryWithLegalNodes meets error, "+
 					"aggregatePaths: %s, startTime: %d, endTime: %d\n",
-					aggregatePaths, &startTimeInMills, &endTimeInMills)
+					aggregatePaths, startTimeInMills, endTimeInMills)
 				return nil, err
 			}
 
@@ -151,7 +151,7 @@ func (p *processor) ProcessQuery(q query.Query, _ bool) ([]*query.Stat, error) {
 				if p.printResponses {
 					sql = fmt.Sprintf("Response for ExecuteAggregationQueryWithLegalNodes, "+
 						"aggregatePaths: %s, startTime: %d, endTime: %d\n",
-						aggregatePaths, &startTimeInMills, &endTimeInMills)
+						aggregatePaths, startTimeInMills, endTimeInMills)
 					printDataSet(sql, dataSet)
 				}
 			}
