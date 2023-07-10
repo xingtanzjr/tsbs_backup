@@ -92,14 +92,6 @@ func init() {
 		log.Println(err_msg)
 		panic(err_msg)
 	}
-	if useAlignedTimeseries && storeTags {
-		warn_msg := "[Waring] Can NOT store tags while using aligned timeseries!"
-		warn_msg += " Because IoTDB do NOT support 'attributes' and 'tags' for aligned timeseries yet."
-		log.Println(warn_msg)
-		warn_msg = "Automatic parameter correction: 'store-tags' is set to false."
-		log.Println(warn_msg)
-		storeTags = false
-	}
 
 	clientConfig = client.Config{
 		Host:     host,
